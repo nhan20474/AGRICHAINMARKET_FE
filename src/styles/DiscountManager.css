@@ -1,0 +1,114 @@
+/* CONTAINER */
+.discount-manager {
+    padding: 20px;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* HEADER */
+.dm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.dm-title {
+    font-size: 24px; font-weight: 700; color: #2d3436;
+    display: flex; align-items: center; gap: 10px;
+}
+
+/* TABLE */
+.dm-table-container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    border: 1px solid #eee;
+    overflow: hidden;
+}
+
+.dm-table { width: 100%; border-collapse: collapse; }
+.dm-table th {
+    background: #f9fafb; padding: 16px; text-align: left;
+    font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase;
+    border-bottom: 1px solid #eee;
+}
+.dm-table td { padding: 16px; border-bottom: 1px solid #eee; color: #333; font-size: 14px; vertical-align: middle; }
+.dm-table tr:hover { background-color: #fcfcfc; }
+
+/* CUSTOM BADGES */
+.code-badge {
+    background: #e3f2fd; color: #1976d2;
+    padding: 4px 8px; border-radius: 4px;
+    font-family: 'Consolas', monospace; font-weight: 700;
+    border: 1px dashed #90caf9; letter-spacing: 1px;
+}
+
+.status-badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.status-badge.active { background: #d1fae5; color: #065f46; }
+.status-badge.inactive { background: #fee2e2; color: #991b1b; }
+.status-badge.expired { background: #f3f4f6; color: #6b7280; }
+
+/* PROGRESS BAR (USAGE) */
+.usage-bar {
+    width: 100px; height: 6px; background: #eee;
+    border-radius: 3px; overflow: hidden; margin-top: 5px;
+}
+.usage-fill { height: 100%; background: #28a745; }
+
+/* MODAL & FORM */
+/* (Sử dụng lại style giống PanelManager để đồng bộ, hoặc copy đoạn dưới) */
+.modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center; z-index: 1200;
+    backdrop-filter: blur(3px);
+}
+.modal-container {
+    background: #fff; width: 600px; max-width: 95%;
+    border-radius: 12px; padding: 0;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: slideUp 0.3s ease-out;
+}
+.modal-header {
+    padding: 20px 24px; border-bottom: 1px solid #eee;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.modal-body { padding: 24px; max-height: 70vh; overflow-y: auto; }
+.modal-footer {
+    padding: 20px 24px; border-top: 1px solid #eee;
+    display: flex; justify-content: flex-end; gap: 12px;
+}
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group.full { grid-column: span 2; }
+.form-label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: #444; }
+.form-input, .form-select, .form-textarea {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid #ddd; border-radius: 6px;
+    font-size: 14px; outline: none; box-sizing: border-box;
+}
+.form-input:focus { border-color: #28a745; }
+
+/* Buttons */
+.btn-primary {
+    background: #28a745; color: #fff; padding: 10px 24px;
+    border-radius: 6px; border: none; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+}
+.btn-secondary {
+    background: #fff; border: 1px solid #ddd; color: #555;
+    padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer;
+}
+.btn-icon {
+    width: 36px; height: 36px; border: none; background: transparent;
+    border-radius: 6px; cursor: pointer; color: #666;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.btn-icon:hover { background: #f1f1f1; }
+.btn-icon.edit:hover { color: #007bff; background: #e3f2fd; }
+.btn-icon.delete:hover { color: #d32f2f; background: #ffebee; }
+
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

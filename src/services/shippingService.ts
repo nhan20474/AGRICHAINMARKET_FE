@@ -1,0 +1,49 @@
+const API_BASE_URL = 'http://localhost:3000/api/shipping';
+
+export interface ShippingInfo {
+  order_id: number;
+  shipping_company?: string;
+  tracking_number?: string;
+  shipping_status?: string;
+  shipped_at?: string;
+  delivered_at?: string;
+  updated_at?: string;
+}
+
+export const shippingService = {
+  // Tạo hoặc cập nhật thông tin vận chuyển cho đơn hàng
+  async upsert(orderId: number, data: Partial<ShippingInfo>): Promise<ShippingInfo> {
+    const res = await fetch(`${API_BASE_URL}/${orderId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || result.message || 'Cập nhật thông tin vận chuyển thất bại');
+    return result.shipping || result;
+  },
+
+  // Lấy thông tin vận chuyển của đơn hàng
+  async getByOrder(orderId: number): Promise<ShippingInfo | null> {
+    const res = await fetch(`${API_BASE_URL}/${orderId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  },
+
+  // Lấy tất cả thông tin vận chuyển của các đơn hàng (cho admin)
+  async getAll(): Promise<ShippingInfo[]> {
+    const res = await fetch(`${API_BASE_URL}`);
+    if (!res.ok) return [];
+    return await res.json();
+  },
+
+  // Xóa thông tin vận chuyển khi đơn hàng bị hủy
+  async remove(orderId: number): Promise<ShippingInfo | null> {
+    const res = await fetch(`${API_BASE_URL}/${orderId}`, {
+      method: 'DELETE'
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || result.message || 'Xóa thông tin vận chuyển thất bại');
+    return result.shipping || null;
+  }
+};

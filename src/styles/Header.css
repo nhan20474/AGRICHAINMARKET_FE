@@ -1,0 +1,289 @@
+/* ================== styles/Header.css ================== */
+
+/* Khai báo biến màu (Giữ nguyên của bạn + thêm màu đỏ cho thông báo) */
+:root {
+    --primary-green: #4CAF50;
+    --secondary-yellow: #FFC107;
+    --text-color: #333;
+    --light-bg: #f5f5f5;
+    --white: #ffffff;
+    --border-color: #ddd;
+    --red-alert: #D32F2F; /* Màu đỏ cho badge thông báo */
+}
+
+/* 🔹 HEADER TOP */
+.market-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 30px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--white);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: 24px;
+    font-weight: 800; /* Đậm hơn chút cho nổi bật */
+    margin-left: 8px;
+}
+
+.logo-text .blue { color: #1976D2; }
+.logo-text .green { color: var(--primary-green); }
+
+/* Khu vực bên phải (Icon + User) */
+.header-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* --- Icon Buttons (Chuông & Giỏ hàng) --- */
+.icon-btn-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.action-btn.icon-only {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%; /* Nút tròn */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.action-btn.icon-only:hover {
+    background-color: var(--light-bg);
+    color: var(--primary-green);
+}
+
+/* Badge số lượng (Chấm đỏ) */
+.badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: var(--red-alert);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: bold;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--white); /* Viền trắng để tách khỏi icon */
+    transform: translate(20%, -20%);
+}
+
+/* --- USER DROPDOWN (Style Text + Icon) --- */
+.user-dropdown-container {
+    position: relative;
+    margin-left: 10px;
+}
+
+.user-toggle-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.user-toggle-btn:hover, .user-toggle-btn.active {
+    background-color: var(--light-bg);
+    color: var(--primary-green);
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chevron {
+    transition: transform 0.2s ease;
+    color: #888;
+}
+
+.chevron.rotate {
+    transform: rotate(180deg);
+}
+
+/* Menu thả xuống (The Box) */
+.dropdown-menu {
+    position: absolute;
+    top: 120%; /* Cách nút 1 đoạn */
+    right: 0;
+    width: 240px;
+    background-color: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 8px 0;
+    z-index: 1000;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header trong dropdown (Tên + Email) */
+.dropdown-header-info {
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+}
+.dropdown-header-info strong { font-size: 15px; color: var(--text-color); }
+.dropdown-header-info span { font-size: 12px; color: #666; margin-top: 2px; }
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 6px 0;
+}
+
+/* Các mục trong menu */
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    text-decoration: none;
+    color: var(--text-color);
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+    background-color: #f0fdf4; /* Xanh rất nhạt */
+    color: var(--primary-green);
+}
+
+.dropdown-item.text-red { color: var(--red-alert); }
+.dropdown-item.text-red:hover { background-color: #ffebee; }
+
+/* --- AUTH BUTTONS (Khi chưa đăng nhập) --- */
+.auth-buttons { display: flex; gap: 10px; }
+
+.action-btn-auth {
+    background-color: var(--primary-green);
+    color: var(--white);
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+.action-btn-auth:hover { background-color: #388E3C; }
+
+.action-btn-auth.secondary {
+    background-color: var(--white);
+    color: var(--primary-green);
+    border: 1px solid var(--primary-green);
+}
+.action-btn-auth.secondary:hover { background-color: #E8F5E9; }
+
+/* 🔹 NAVIGATION BAR (Giữ nguyên style Xanh lá) */
+.market-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--primary-green);
+    padding: 10px 30px;
+}
+
+.nav-links a {
+    color: var(--white);
+    text-decoration: none;
+    padding: 8px 16px;
+    margin-right: 5px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-radius: 4px;
+    border-bottom: 2px solid transparent;
+}
+
+.nav-links a:hover, .nav-links a.active {
+    background-color: rgba(255, 255, 255, 0.2); /* Hiệu ứng làm sáng */
+    font-weight: 600;
+}
+
+/* Thanh tìm kiếm trong Navbar */
+.navbar-search {
+    position: relative;
+    width: 320px;
+}
+
+.navbar-search input {
+    width: 100%;
+    padding: 8px 15px 8px 38px; /* Padding trái lớn để chừa chỗ cho icon */
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+    background-color: var(--white);
+    outline: none;
+}
+
+.navbar-search .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+}
+
+/* Popup thông báo (Giữ nguyên) */
+.notify-bottom {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #333;
+    color: var(--white);
+    padding: 12px 24px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 1100;
+    animation: slideUp 0.3s ease;
+    border-left: 4px solid var(--primary-green);
+}
+
+.notify-icon {
+    color: var(--primary-green);
+    font-weight: bold;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

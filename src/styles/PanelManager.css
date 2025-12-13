@@ -1,0 +1,368 @@
+/* ===========================================
+   PANEL MANAGER STYLES (OPTIMIZED)
+   =========================================== */
+
+/* --- 1. CONTAINER & LAYOUT --- */
+.panel-manager {
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Header */
+.pm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.pm-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3436;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* --- 2. BUTTONS (Modern Style) --- */
+
+/* Base Button Style */
+.btn-primary, .btn-secondary {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.5;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Primary (Nút chính - Xanh lá Emerald) */
+.btn-primary {
+    background-color: #10b981;
+    color: #fff;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.btn-primary:hover:not(:disabled) {
+    background-color: #059669;
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2), 0 2px 4px -1px rgba(16, 185, 129, 0.1);
+    transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+    background-color: #047857;
+    transform: translateY(0);
+    box-shadow: none;
+}
+.btn-primary:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Secondary (Nút phụ - Trắng viền xám) */
+.btn-secondary {
+    background-color: #fff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+.btn-secondary:hover:not(:disabled) {
+    background-color: #f9fafb;
+    border-color: #9ca3af;
+    color: #111827;
+}
+.btn-secondary:active { background-color: #f3f4f6; }
+
+/* Icon Buttons (Sửa/Xóa) */
+/* --- ACTION BUTTONS (TO & RÕ HƠN) --- */
+
+.btn-icon {
+    /* 1. Tăng kích thước */
+    width: 40px; 
+    height: 40px;
+    
+    /* 2. Căn chỉnh */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* 3. Bo góc và Border */
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    /* 4. Khoảng cách giữa các nút */
+    margin: 0 4px;
+}
+
+/* Nút Sửa (Màu xanh dương) */
+.btn-icon.edit {
+    background-color: #e0f2fe; /* Nền xanh nhạt */
+    color: #0284c7;            /* Icon xanh đậm */
+}
+
+.btn-icon.edit:hover {
+    background-color: #0284c7; /* Hover: Nền đậm */
+    color: #ffffff;            /* Icon trắng */
+    box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3); /* Đổ bóng */
+    transform: translateY(-2px); /* Nổi lên */
+}
+
+/* Nút Xóa (Màu đỏ) */
+.btn-icon.delete {
+    background-color: #fee2e2; /* Nền đỏ nhạt */
+    color: #dc2626;            /* Icon đỏ đậm */
+}
+
+.btn-icon.delete:hover {
+    background-color: #dc2626; /* Hover: Nền đậm */
+    color: #ffffff;            /* Icon trắng */
+    box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Chỉnh lại cột Hành động trong bảng để nút không bị dính nhau */
+.panel-table td:last-child {
+    white-space: nowrap; /* Không xuống dòng */
+}
+
+
+/* --- 3. TABLE STYLES --- */
+.panel-table-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.panel-table { width: 100%; border-collapse: collapse; }
+
+.panel-table th {
+    background-color: #f9fafb;
+    color: #6b7280;
+    font-weight: 600;
+    text-align: left;
+    padding: 16px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.panel-table td {
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+    font-size: 14px;
+    vertical-align: middle;
+}
+.panel-table tr:last-child td { border-bottom: none; }
+.panel-table tr:hover { background-color: #f9fafb; }
+
+/* Badges */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+.status-badge.active { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.status-badge.inactive { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+.type-badge {
+    background: #e0e7ff; color: #3730a3;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'Consolas', monospace;
+    border: 1px solid #c7d2fe;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* --- 4. MODAL STYLES --- */
+.modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1100;
+}
+
+.modal-container {
+    background: #fff;
+    width: 700px; max-width: 95%;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    display: flex; flex-direction: column;
+    max-height: 90vh;
+    animation: slideUp 0.3s ease-out;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f9fafb; border-radius: 16px 16px 0 0;
+}
+
+.modal-title {
+    margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;
+    display: flex; align-items: center; gap: 10px;
+}
+
+.modal-header {
+    position: relative; /* QUAN TRỌNG */
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+    border-radius: 16px 16px 0 0;
+}
+
+/* Nút thoát nằm gọn trong header */
+.modal-close-btn {
+    position: static;
+    
+    /* 1. Tăng kích thước vùng bấm cho dễ bấm */
+    width: 40px;  /* Cũ là 32px */
+    height: 40px; /* Cũ là 32px */
+    
+    border-radius: 50%;
+    background: #f1f3f5; /* Thêm nền xám nhẹ để nút nổi bật hơn */
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: #555; /* Màu xám đậm hơn cho rõ */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+/* 2. Tăng kích thước & độ dày của chữ X (Icon) */
+.modal-close-btn svg {
+    width: 24px;  /* Kích thước icon */
+    height: 24px;
+    stroke-width: 2.5; /* Làm nét chữ X dày hơn */
+}
+
+.modal-close-btn:hover {
+    background-color: #ffebee;
+    color: #d32f2f;
+    transform: scale(1.1); /* Phóng to nhẹ khi di chuột vào */
+}
+
+
+.modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+.modal-footer {
+    padding: 20px 24px; border-top: 1px solid #e5e7eb;
+    display: flex; justify-content: flex-end; gap: 12px;
+    background: #fff; border-radius: 0 0 16px 16px;
+}
+
+/* --- 5. FORM ELEMENTS --- */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-group.full { grid-column: span 2; }
+
+.form-label {
+    display: block; margin-bottom: 6px;
+    font-weight: 600; font-size: 13px; color: #4b5563;
+}
+.required { color: #ef4444; margin-left: 2px; }
+
+.form-input, .form-select {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 14px; color: #111827;
+    outline: none; box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input:focus, .form-select:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-divider { height: 1px; background: #e5e7eb; margin: 24px 0; }
+.form-section-title {
+    font-size: 15px; font-weight: 700; color: #059669;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* --- 6. IMAGE UPLOAD --- */
+.img-upload-box {
+    border: 2px dashed #d1d5db; border-radius: 10px;
+    padding: 32px; text-align: center;
+    background: #f9fafb; cursor: pointer;
+    transition: all 0.2s;
+}
+.img-upload-box:hover { border-color: #10b981; background: #ecfdf5; }
+
+.upload-label { cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #6b7280; }
+.upload-icon-wrapper {
+    width: 48px; height: 48px; background: #d1fae5;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: #059669;
+}
+.upload-text { font-weight: 600; font-size: 14px; color: #374151; }
+.upload-hint { font-size: 12px; color: #9ca3af; }
+
+/* Image Grid Preview */
+.img-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 16px; margin-top: 16px;
+}
+
+.img-preview-wrapper {
+    position: relative; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb; aspect-ratio: 1/1;
+}
+.img-preview { width: 100%; height: 100%; object-fit: cover; }
+
+.remove-img-btn {
+    position: absolute; top: 4px; right: 4px;
+    width: 24px; height: 24px; background: rgba(255,255,255,0.9);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #ef4444; font-size: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    transition: transform 0.1s;
+}
+.remove-img-btn:hover { transform: scale(1.1); background: #fff; }
+
+.img-tag {
+    position: absolute; bottom: 0; left: 0; width: 100%;
+    background: rgba(0,0,0,0.6); color: #fff;
+    font-size: 10px; text-align: center; padding: 4px 0;
+    text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;
+}
+
+/* Animation */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: span 1; }
+    .modal-container { width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+    .pm-header { flex-direction: column; align-items: stretch; gap: 15px; }
+}

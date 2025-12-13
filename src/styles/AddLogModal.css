@@ -1,0 +1,214 @@
+/* === MODAL BACKDROP === */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1100;
+}
+
+/* === MODAL CONTAINER === */
+.modal-container {
+    background: #fff;
+    width: 500px;
+    max-width: 90%;
+    border-radius: 12px;
+    padding: 30px;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease;
+}
+
+/* Close button - Chuẩn Tiêu Chuẩn */
+.modal-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%; /* Hình tròn */
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    
+    /* Flexbox để căn icon vào giữa */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    transition: all 0.2s ease;
+}
+
+/* Hiệu ứng khi di chuột vào */
+.modal-close-btn:hover {
+    background-color: #f1f3f5; /* Nền xám nhạt */
+    color: #d32f2f; /* Icon chuyển đỏ nhẹ */
+    transform: rotate(90deg); /* Xoay nhẹ tạo cảm giác tương tác */
+}
+
+/* Title */
+.modal-title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #28a745;
+}
+
+.modal-desc {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* === BODY === */
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-height: 65vh;
+}
+
+/* Label */
+.label {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #444;
+}
+.required { color: red; }
+
+/* Input */
+.input, .textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    color: #333;
+    background: #fff;
+}
+
+.textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* IMAGE UPLOAD */
+.img-upload-box {
+    border: 1px dashed #ccc;
+    padding: 15px;
+    border-radius: 6px;
+    background: #fafafa;
+    text-align: center;
+}
+
+.upload-label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: #007bff;
+}
+
+.upload-icon {
+    background: #e3f2fd;
+    padding: 10px;
+    border-radius: 50%;
+}
+
+/* Preview */
+.img-preview-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.img-preview {
+    max-height: 150px;
+    max-width: 100%;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.remove-img-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc3545;
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* === FOOTER === */
+.modal-footer {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+/* Buttons */
+.btn-cancel {
+    padding: 10px 24px;
+    background: #fff;
+    color: #555;
+    font-weight: 600;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.btn-cancel:hover {
+    background: #f8f8f8;
+}
+
+.btn-submit {
+    padding: 10px 24px;
+    background: #28a745;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-submit:hover {
+    background: #1f8738;
+}
+
+.btn-submit.disabled {
+    background: #ccc !important;
+    cursor: not-allowed !important;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Animations */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
