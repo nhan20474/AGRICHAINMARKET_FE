@@ -172,5 +172,29 @@ export const orderService = {
         if (!res.ok) throw new Error(result.error || 'Cập nhật trạng thái thất bại');
         
         return result;
+    },
+
+    // Thêm vào object orderService
+    adminGetAll: async () => {
+        const response = await fetch(`${API_BASE}/admin/all`, {
+            headers: {
+                'Authorization': localStorage.getItem('token') || '',
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) throw new Error('Không thể tải danh sách đơn hàng');
+        return response.json();
+    },
+
+    adminCancelOrder: async (orderId: number) => {
+        const response = await fetch(`${API_BASE}/admin/cancel/${orderId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': localStorage.getItem('token') || '',
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) throw new Error('Hủy đơn thất bại');
+        return response.json();
     }
 };

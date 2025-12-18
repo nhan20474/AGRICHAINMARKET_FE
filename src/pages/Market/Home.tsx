@@ -1,5 +1,5 @@
 /* ------------------------------- IMPORT ------------------------------- */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Star, ShoppingCart } from "lucide-react";
 
@@ -22,21 +22,14 @@ const getImageUrl = (url?: string) => {
   return `http://localhost:3000${url}`;
 };
 
-/** Normalize product to conform exactly to Product interface types.
- *  Important: sale_price will be `number | undefined` (never null).
- */
 const normalizeProductToProduct = (p: any): Product => {
-  // price might come as number or string from backend -> force Number
   const priceNum = Number(p.price ?? 0);
-
-  // sale_price might be undefined/null/string/number -> convert to number or undefined
   const rawSale = p.sale_price;
   const saleNum =
     rawSale !== null && rawSale !== undefined && rawSale !== ""
       ? Number(rawSale)
       : undefined;
 
-  // Build Product typed object (keep other fields as-is)
   const normalized: Product = {
     id: Number(p.id),
     name: String(p.name ?? ""),
@@ -49,16 +42,15 @@ const normalizeProductToProduct = (p: any): Product => {
     extra_images: p.extra_images,
     status: String(p.status ?? ""),
     seller_id: Number(p.seller_id ?? 0),
-    category_id: p.category_id !== undefined && p.category_id !== null ? Number(p.category_id) : undefined,
+    category_id: p.category_id ? Number(p.category_id) : undefined,
     created_at: p.created_at,
     updated_at: p.updated_at,
-    rating: p.rating !== undefined ? Number(p.rating) : undefined,
-    review_count: p.review_count !== undefined ? Number(p.review_count) : undefined,
-    sold_count: p.sold_count !== undefined ? Number(p.sold_count) : undefined,
+    rating: p.rating ? Number(p.rating) : undefined,
+    review_count: p.review_count ? Number(p.review_count) : undefined,
+    sold_count: p.sold_count ? Number(p.sold_count) : undefined,
     seller_name: p.seller_name,
     category_name: p.category_name,
   };
-
   return normalized;
 };
 
@@ -67,6 +59,9 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // State để tạm dừng auto scroll khi hover
+  const [isPaused, setIsPaused] = useState(false);
 
   const navigate = useNavigate();
 
@@ -87,12 +82,10 @@ export default function Home() {
 
         if (!mounted) return;
 
-        // Normalize items and cast to Product[]
         const normalized: Product[] = (productData || []).map((p: any) =>
           normalizeProductToProduct(p)
         );
 
-        // Only set available products (still Product[])
         setProducts(normalized.filter((p) => p.status === "available"));
         setPanels(panelData || []);
       } catch (err) {
@@ -112,82 +105,105 @@ export default function Home() {
   const bannerList = panels.find((p) => p.page === "banner")?.images || [];
   const categories = panels.filter((p) => p.page === "categories");
 
-  // Sale products: ensure sale_price is a number and less than price
   const saleProducts = products.filter(
     (p) => typeof p.sale_price === "number" && !Number.isNaN(p.sale_price) && p.sale_price < p.price
   );
 
-  // Featured = products that are NOT sale products (to avoid duplication)
   const featured = products.filter(
     (p) => !(typeof p.sale_price === "number" && !Number.isNaN(p.sale_price) && p.sale_price < p.price)
   ).slice(0, 10);
 
   const aiSuggestion = products.slice(0, 10);
 
-  /* ------------------------ CLONE LOOP LOGIC ------------------------ */
-  const setupCloneLoop = (list: any[]) => {
+  /* ------------------------ CLONE LOOP LOGIC (BANNER ONLY) ------------------------ */
+  // Chỉ dùng clone loop cho Banner vì banner hiển thị 1 hình/lần
+  const setupBannerLoop = (list: any[]) => {
     if (!list || list.length === 0) return [];
     if (list.length === 1) return list;
     return [list[list.length - 1], ...list, list[0]];
   };
 
-  const cloneBanner = setupCloneLoop(bannerList);
-  const cloneFeatured = setupCloneLoop(featured);
-  const cloneAI = setupCloneLoop(aiSuggestion);
-  const cloneSale = setupCloneLoop(saleProducts);
+  const cloneBanner = setupBannerLoop(bannerList);
+  
+  // Các list sản phẩm KHÔNG dùng clone loop để tránh lỗi hiển thị
+  // Nếu muốn infinite loop cho product, cần thư viện như Swiper hoặc logic phức tạp hơn
+  
+  /* ----------------------- SCROLL SYNC (BANNER ONLY) ----------------------- */
+  const handleBannerScrollSync = () => {
+    const track = bannerRef.current;
+    if (!track || cloneBanner.length <= 1) return;
+    
+    const itemWidth = track.clientWidth; // Banner luôn full width container
 
-  /* ----------------------- SCROLL SYNC ----------------------- */
- const handleScrollSync = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
-  const track = ref.current;
-  if (!track || list.length <= 1) return;
-  const itemWidth = track.clientWidth; // width 1 item = track width (hoặc tính theo item trong carousel)
+    // Scroll tới clone cuối → reset về item đầu thật
+    if (track.scrollLeft >= (cloneBanner.length - 1) * itemWidth - 10) { // -10 sai số
+      track.style.scrollBehavior = "auto";
+      track.scrollLeft = itemWidth;
+      track.style.scrollBehavior = "smooth";
+    }
 
-  // Scroll tới clone cuối → reset về item đầu thật
-  if (track.scrollLeft >= (list.length - 1) * itemWidth) {
-    track.style.scrollBehavior = "auto";
-    track.scrollLeft = itemWidth; // scroll tới item đầu thật
-    track.style.scrollBehavior = "smooth";
-  }
-
-  // Scroll tới clone đầu → reset về item cuối thật
-  if (track.scrollLeft <= 0) {
-    track.style.scrollBehavior = "auto";
-    track.scrollLeft = (list.length - 2) * itemWidth;
-    track.style.scrollBehavior = "smooth";
-  }
-};
-
+    // Scroll tới clone đầu → reset về item cuối thật
+    if (track.scrollLeft <= 0) {
+      track.style.scrollBehavior = "auto";
+      track.scrollLeft = (cloneBanner.length - 2) * itemWidth;
+      track.style.scrollBehavior = "smooth";
+    }
+  };
 
   /* ---------------------------- BUTTON SCROLL ---------------------------- */
-const scrollLeft = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
-  const track = ref.current;
-  if (!track) return;
-  track.scrollBy({ left: -track.clientWidth, behavior: "smooth" });
-  setTimeout(() => handleScrollSync(ref, list), 100); // sync sau khi scroll xong
-};
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right', isBanner = false) => {
+    const track = ref.current;
+    if (!track) return;
+    
+    // Nếu là banner thì scroll theo chiều rộng container (1 item)
+    // Nếu là product list thì scroll theo khoảng 300px hoặc chiều rộng container
+    const scrollAmount = isBanner ? track.clientWidth : 300; 
 
-const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
-  const track = ref.current;
-  if (!track) return;
-  track.scrollBy({ left: track.clientWidth, behavior: "smooth" });
-  setTimeout(() => handleScrollSync(ref, list), 100);
-};
+    if (direction === 'left') {
+      track.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+    } else {
+      track.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
 
+    if (isBanner) {
+      setTimeout(handleBannerScrollSync, 300);
+    }
+  };
 
   /* ------------------------- AUTO SCROLL --------------------------- */
   useEffect(() => {
-  const intervals = [
-    { ref: bannerRef, list: cloneBanner },
-    { ref: featuredRef, list: cloneFeatured },
-    { ref: aiRef, list: cloneAI },
-    { ref: saleRef, list: cloneSale },
-  ].map(item => {
-    if (!item.list || item.list.length <= 1) return null;
-    return window.setInterval(() => scrollRight(item.ref, item.list), 4000);
-  });
+    if (isPaused) return; // Nếu đang hover thì không chạy auto scroll
 
-  return () => intervals.forEach(i => i && clearInterval(i));
-}, [cloneBanner, cloneFeatured, cloneAI, cloneSale]);
+    // 1. Banner Auto Scroll (Infinite Loop)
+    const bannerInterval = setInterval(() => {
+      if (bannerRef.current && cloneBanner.length > 1) {
+        scrollContainer(bannerRef, 'right', true);
+      }
+    }, 4000);
+
+    // 2. Products Auto Scroll (Chạy đến cuối rồi quay lại đầu)
+    const productAutoScroll = (ref: React.RefObject<HTMLDivElement>, list: any[]) => {
+       if (!ref.current || list.length === 0) return;
+       const track = ref.current;
+       // Nếu đã cuộn đến cuối (cộng thêm sai số nhỏ)
+       if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 10) {
+          track.scrollTo({ left: 0, behavior: "smooth" });
+       } else {
+          scrollContainer({ current: track }, 'right', false);
+       }
+    };
+
+    const featuredInterval = setInterval(() => productAutoScroll(featuredRef, featured), 5000);
+    const aiInterval = setInterval(() => productAutoScroll(aiRef, aiSuggestion), 6000); // Lệch thời gian cho tự nhiên
+    const saleInterval = setInterval(() => productAutoScroll(saleRef, saleProducts), 5500);
+
+    return () => {
+      clearInterval(bannerInterval);
+      clearInterval(featuredInterval);
+      clearInterval(aiInterval);
+      clearInterval(saleInterval);
+    };
+  }, [cloneBanner, featured, aiSuggestion, saleProducts, isPaused]);
 
   /* ----------------------------- ADD CART ------------------------------ */
   const handleAdd = async (e: any, product: Product) => {
@@ -208,10 +224,8 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
 
   /* ---------------------------- PRODUCT CARD ---------------------------- */
   const ProductCard = ({ p }: { p: Product }) => {
-    // price and sale_price are normalized to numbers or undefined
     const price = Number(p.price ?? 0);
     const sale = p.sale_price !== undefined ? Number(p.sale_price) : undefined;
-
     const isSale = typeof sale === "number" && !Number.isNaN(sale) && sale < price;
     const discountPercent = isSale ? Math.round(((price - (sale as number)) / price) * 100) : 0;
 
@@ -236,11 +250,12 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
         </div>
 
         <div className="meta-row">
-          <Star size={12} fill="#FFD700" /> {p.rating || 0}
+          <Star size={12} fill="#FFD700" textAnchor="middle" strokeWidth={0} /> 
+          <span style={{ marginLeft: 4, fontSize: 12 }}>{p.rating || 0}</span>
         </div>
 
         <button className="btn-cart" onClick={(e) => handleAdd(e, p)}>
-          <ShoppingCart size={16} /> Thêm vào giỏ
+          <ShoppingCart size={16} /> Thêm
         </button>
       </div>
     );
@@ -250,24 +265,30 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
 
   /* ----------------------------- RENDER ----------------------------- */
   return (
-    <main className="home-container">
+    <main 
+      className="home-container"
+      // Tạm dừng auto scroll khi chuột ở trong khu vực main
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       {/* ===================== BANNER SLIDER ===================== */}
       <section className="banner-slider">
         {cloneBanner.length === 0 ? (
           <div className="banner-placeholder">Chưa có banner</div>
         ) : (
           <>
-            <button className="banner-nav left" onClick={() => scrollLeft(bannerRef, cloneBanner)}>
+            <button className="banner-nav left" onClick={() => scrollContainer(bannerRef, 'left', true)}>
               <ChevronLeft />
             </button>
 
-            <div className="banner-track" ref={bannerRef}>
+            {/* Banner cần sự kiện scroll để sync loop */}
+            <div className="banner-track" ref={bannerRef} onScroll={handleBannerScrollSync}>
               {cloneBanner.map((img, i) => (
                 <img key={i} src={getImageUrl(img)} className="banner-img" alt={`banner-${i}`} />
               ))}
             </div>
 
-            <button className="banner-nav right" onClick={() => scrollRight(bannerRef, cloneBanner)}>
+            <button className="banner-nav right" onClick={() => scrollContainer(bannerRef, 'right', true)}>
               <ChevronRight />
             </button>
           </>
@@ -277,14 +298,13 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
       {/* =================== DANH MỤC =================== */}
       <section className="category-section">
         <h2 className="section-title">DANH MỤC NÔNG SẢN</h2>
-
         <div className="category-grid">
           {categories.map((c) => (
             <div
               key={c.id}
               className="category-item"
-              onClick={() => navigate(`/products?category=${c.id}`)}
-            >
+              onClick={() => navigate(`/products?category=${encodeURIComponent(c.name)}`)}
+              >
               <img src={getImageUrl(c.images?.[0])} alt={c.name} />
               <span>{c.name}</span>
             </div>
@@ -295,21 +315,18 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
       {/* ================== SẢN PHẨM NỔI BẬT ================== */}
       <section className="carousel-section">
         <h2 className="section-title">SẢN PHẨM NỔI BẬT</h2>
-
         <div className="carousel-container">
-          <button className="carousel-btn left" onClick={() => scrollLeft(featuredRef, cloneFeatured)}>
+          <button className="carousel-btn left" onClick={() => scrollContainer(featuredRef, 'left')}>
             <ChevronLeft size={20} />
           </button>
-
           <div className="carousel-track" ref={featuredRef}>
-            {cloneFeatured.map((p, i) => (
-              <div className="carousel-item" key={`${p.id}-f-${i}`}>
+            {featured.map((p) => (
+              <div className="carousel-item" key={p.id}>
                 <ProductCard p={p} />
               </div>
             ))}
           </div>
-
-          <button className="carousel-btn right" onClick={() => scrollRight(featuredRef, cloneFeatured)}>
+          <button className="carousel-btn right" onClick={() => scrollContainer(featuredRef, 'right')}>
             <ChevronRight size={20} />
           </button>
         </div>
@@ -318,21 +335,18 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
       {/* ===================== GỢI Ý AI ===================== */}
       <section className="carousel-section">
         <h2 className="section-title">Gợi Ý Dựa Trên AI</h2>
-
         <div className="carousel-container">
-          <button className="carousel-btn left" onClick={() => scrollLeft(aiRef, cloneAI)}>
+          <button className="carousel-btn left" onClick={() => scrollContainer(aiRef, 'left')}>
             <ChevronLeft size={20} />
           </button>
-
           <div className="carousel-track" ref={aiRef}>
-            {cloneAI.map((p, i) => (
-              <div className="carousel-item" key={`${p.id}-a-${i}`}>
+            {aiSuggestion.map((p) => (
+              <div className="carousel-item" key={p.id}>
                 <ProductCard p={p} />
               </div>
             ))}
           </div>
-
-          <button className="carousel-btn right" onClick={() => scrollRight(aiRef, cloneAI)}>
+          <button className="carousel-btn right" onClick={() => scrollContainer(aiRef, 'right')}>
             <ChevronRight size={20} />
           </button>
         </div>
@@ -341,21 +355,18 @@ const scrollRight = (ref: React.RefObject<HTMLDivElement>, list: Product[]) => {
       {/* ================== SẢN PHẨM GIẢM GIÁ ================== */}
       <section className="carousel-section">
         <h2 className="section-title">SẢN PHẨM GIẢM GIÁ</h2>
-
         <div className="carousel-container">
-          <button className="carousel-btn left" onClick={() => scrollLeft(saleRef, cloneSale)}>
+          <button className="carousel-btn left" onClick={() => scrollContainer(saleRef, 'left')}>
             <ChevronLeft size={20} />
           </button>
-
           <div className="carousel-track" ref={saleRef}>
-            {cloneSale.map((p, i) => (
-              <div className="carousel-item" key={`${p.id}-s-${i}`}>
+            {saleProducts.map((p) => (
+              <div className="carousel-item" key={p.id}>
                 <ProductCard p={p} />
               </div>
             ))}
           </div>
-
-          <button className="carousel-btn right" onClick={() => scrollRight(saleRef, cloneSale)}>
+          <button className="carousel-btn right" onClick={() => scrollContainer(saleRef, 'right')}>
             <ChevronRight size={20} />
           </button>
         </div>

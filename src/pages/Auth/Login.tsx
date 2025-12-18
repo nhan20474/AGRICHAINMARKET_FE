@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
@@ -28,14 +28,20 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const loginPayload: any = {
+      const loginPayload = {
         email: formData.email,
         password: formData.password,
       };
-      // Nếu backend yêu cầu role, truyền thêm
-      // loginPayload.role = formData.role || '';
 
       const response = await authService.login(loginPayload);
+
+      // --- [MỚI] KIỂM TRA KHÓA TÀI KHOẢN ---
+      if (response.user && response.user.is_locked) {
+          setError('⛔ Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.');
+          setLoading(false);
+          return;
+      }
+      // -------------------------------------
 
       const isSuccess =
         (response.token && response.user) ||
@@ -46,6 +52,7 @@ export default function Login() {
         if (response.user) {
           localStorage.setItem('user', JSON.stringify(response.user));
         }
+        
         await login(
           response.user?.email || formData.email,
           formData.password,
@@ -54,7 +61,6 @@ export default function Login() {
 
         setShowSnackbar(true);
 
-        // Điều hướng theo role sau khi hiện snackbar
         setTimeout(() => {
           setShowSnackbar(false);
           const role = response.user?.role;
@@ -69,10 +75,20 @@ export default function Login() {
       } else {
         setError(response.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
-      setError(errorMessage);
+    } catch (err: any) {
       console.error('Login error:', err);
+      
+      // --- [MỚI] BẮT LỖI KHÓA TỪ BACKEND (NẾU CÓ) ---
+      const errorMsg = err.response?.data?.message || err.message || '';
+      
+      if (errorMsg.toLowerCase().includes('khóa') || errorMsg.toLowerCase().includes('locked')) {
+          setError('⛔ Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.');
+      } else {
+          // Fallback lỗi chung như cũ
+          setError(errorMsg !== '' ? errorMsg : 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      }
+      // ----------------------------------------------
+      
     } finally {
       setLoading(false);
     }
@@ -161,7 +177,7 @@ export default function Login() {
                 {loading ? (
                   <>
                     <span className="spinner"></span>
-                    Đang đăng nhập...
+                    Đang kiểm tra...
                   </>
                 ) : (
                   'Đăng nhập'
@@ -211,39 +227,3 @@ export default function Login() {
     </>
   );
 }
-
-// Thêm vào Login.css:
-/*
-.notify-bottom {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%) translateY(100px);
-  background: #38b000;
-  color: #fff;
-  padding: 12px 32px;
-  border-radius: 24px;
-  font-size: 16px;
-  font-weight: 500;
-  z-index: 9999;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.4s cubic-bezier(.4,0,.2,1);
-}
-.notify-bottom.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-.notify-icon {
-  font-size: 20px;
-  font-weight: bold;
-}
-.notify-text {
-  font-size: 16px;
-}
-*/

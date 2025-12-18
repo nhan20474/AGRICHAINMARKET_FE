@@ -1,7 +1,7 @@
 interface LoginRequest {
   email: string;
   password: string;
-  role: string;
+  role?: string;
 }
 
 interface RegisterRequest {
@@ -22,6 +22,7 @@ interface AuthResponse {
     email: string;
     role: string;
     full_name?: string;
+    is_locked?: boolean;
   };
   message?: string;
 }
@@ -45,7 +46,7 @@ export const authService = {
       console.log('Login response:', result);
 
       if (!response.ok) {
-        throw new Error(result.message || 'Đăng nhập thất bại');
+        throw new Error(result.message || result.error || 'Đăng nhập thất bại');
       }
 
       return result;
@@ -107,7 +108,7 @@ export const authService = {
 
   async getProfile(id: number): Promise<any> {
     try {
-      const response = await fetch(`http://localhost:3000/api/profile/${id}`);
+      const response = await fetch(`${API_BASE_URL}/profile/${id}`);
       if (!response.ok) throw new Error('Không thể lấy thông tin người dùng');
       return await response.json();
     } catch (error) {

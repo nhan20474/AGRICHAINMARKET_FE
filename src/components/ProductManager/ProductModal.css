@@ -127,8 +127,7 @@
 }
 
 .pm-btn.submit {
-    background: var(--primary-color);
-    color: white;
+    background:  #e0e0e0; 
 }
 
 .pm-uploading {

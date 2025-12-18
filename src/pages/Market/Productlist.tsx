@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext, useNavigate , useSearchParams} from 'react-router-dom';
 import { ShoppingCart, Eye, Filter, X, Star } from 'lucide-react';
 import { searchService } from '../../services/searchService';
 import { categoryService, Category } from '../../services/categoryService';
@@ -22,6 +22,7 @@ const ProductList: React.FC = () => {
     const { searchTerm } = useOutletContext<ContextType>();
     const userId = getUserId();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // --- Data State ---
     const [products, setProducts] = useState<any[]>([]);
@@ -44,6 +45,24 @@ const ProductList: React.FC = () => {
     useEffect(() => {
         categoryService.getAll().then(setCategories).catch(console.error);
     }, []);
+
+    useEffect(() => {
+        const categoryNameFromUrl = searchParams.get('category'); // Lấy tên từ URL (VD: Rau củ)
+        const categoryIdFromUrl = searchParams.get('categoryId'); // Hoặc lấy ID nếu bạn truyền ID
+
+        if (categories.length > 0) {
+            if (categoryIdFromUrl) {
+                 setSelectedCategoryId(Number(categoryIdFromUrl));
+            } else if (categoryNameFromUrl) {
+                // Tìm ID dựa trên tên danh mục (cần decode vì URL mã hóa tiếng Việt)
+                const decodedName = decodeURIComponent(categoryNameFromUrl).toLowerCase();
+                const foundCat = categories.find(c => c.name.toLowerCase() === decodedName);
+                if (foundCat) {
+                    setSelectedCategoryId(foundCat.id);
+                }
+            }
+        }
+    }, [searchParams, categories]);
 
     useEffect(() => {
     const fetchData = async () => {

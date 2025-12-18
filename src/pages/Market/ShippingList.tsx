@@ -33,49 +33,48 @@ const ShippingList: React.FC = () => {
   const [buyerId, setBuyerId] = useState<number | null>(null);
   const [resolvingBuyer, setResolvingBuyer] = useState(true);
 
-  // Hàm xác định buyerId
+// Hàm xác định buyerId (Đã sửa logic)
   const resolveBuyerId = useCallback(async () => {
     setResolvingBuyer(true);
     let found: number | null = null;
 
-    // 1. Thử key trực tiếp
-    const raw = localStorage.getItem('buyerId');
-    if (raw) {
-      const n = parseInt(raw, 10);
-      if (!isNaN(n)) found = n;
-    }
-
-    // 2. Thử đối tượng user chung
-    if (!found) {
-      const userRaw = localStorage.getItem('user');
-      if (userRaw) {
-        try {
-          const u = JSON.parse(userRaw);
-          const cand = u?.buyer_id ?? u?.id ?? u?.user_id;
-          if (typeof cand === 'number') found = cand;
-        } catch {}
-      }
-    }
-
-    // 3. Thử gọi /api/auth/me nếu vẫn chưa
-    if (!found) {
-      try {
+    // 1. Ưu tiên gọi API để xác thực session hiện tại (Chính xác nhất)
+    try {
         const r = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
         if (r.ok) {
-          const me = await r.json().catch(() => ({}));
-          const cand = me?.buyer_id ?? me?.id ?? me?.user_id;
-          if (typeof cand === 'number') found = cand;
+            const me = await r.json().catch(() => ({}));
+            // Lấy ID từ session thật
+            const cand = me?.buyer_id ?? me?.id ?? me?.user_id;
+            if (typeof cand === 'number') found = cand;
         }
-      } catch {}
+    } catch {}
+
+    // 2. Nếu không có session từ server (VD: mạng lag), mới check localStorage "user" object
+    // Nhưng phải cẩn thận: nếu API trả về 401 (chưa login) thì KHÔNG ĐƯỢC dùng localStorage cũ
+    if (!found) {
+        const userRaw = localStorage.getItem('user');
+        if (userRaw) {
+            try {
+                const u = JSON.parse(userRaw);
+                // Chỉ lấy nếu user này khớp với token hiện tại (nếu có logic check token)
+                // Ở đây tạm chấp nhận lấy từ localStorage nếu API fail do mạng
+                // Nhưng nếu API trả về 401 thì found vẫn là null -> đúng logic
+                const cand = u?.buyer_id ?? u?.id ?? u?.user_id;
+                if (typeof cand === 'number') found = cand;
+            } catch {}
+        }
     }
 
     if (found) {
-      setBuyerId(found);
-      localStorage.setItem('buyerId', String(found));
-      setError('');
+        setBuyerId(found);
+        localStorage.setItem('buyerId', String(found)); // Cập nhật lại cho đồng bộ
+        setError('');
     } else {
-      setBuyerId(null);
-      setError('Chưa xác định được tài khoản người mua (buyerId). Vui lòng đăng nhập.');
+        setBuyerId(null);
+        // QUAN TRỌNG: Xóa dữ liệu cũ để tránh hiện nhầm của người khác
+        localStorage.removeItem('buyerId'); 
+        localStorage.removeItem('user'); 
+        setError('Vui lòng đăng nhập để xem thông tin vận chuyển.');
     }
     setResolvingBuyer(false);
   }, []);

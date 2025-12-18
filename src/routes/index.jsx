@@ -25,6 +25,7 @@ import PanelManager from '../pages/Admin/PanelManager';
 import DiscountManager from '../pages/Admin/DiscountManager';
 import FarmerReport from '../pages/Farmer/FarmerReports';
 import AdminReports from '../pages/Admin/AdminReports';
+import AdminOrderManager from '../pages/Admin/OrderManager';
 
 // Sử dụng lazy() cho các component lớn
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard'));
@@ -38,7 +39,6 @@ const AppRoutes = () => (
     <Routes>
       
       {/* ✅ Routes không cần Layout (Auth pages + Profile) */}
-      <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/profile" element={<ProfilePage />} /> {/* ✅ DI CHUYỂN RA ĐÂY */}
@@ -54,6 +54,7 @@ const AppRoutes = () => (
 
       {/* Routes cần Layout (Market) */}
       <Route element={<AppLayout />}>
+        <Route path="/" element={<MarketDashboard />} />
         <Route path="/shop" element={<MarketDashboard />} />
         <Route path="/market" element={<MarketDashboard />} />
         <Route path="/products" element={<ProductList />} />
@@ -65,7 +66,6 @@ const AppRoutes = () => (
         <Route path="/shipping/update/:orderId" element={<OrderShippingDetailWrapper />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/admin/broadcast" element={<BroadcastNotification />} />
-        {/* ❌ XÓA: <Route path="/profile" element={<ProfilePage />} /> */}
       </Route>
 
       {/* Routes Dashboard */}
@@ -77,6 +77,7 @@ const AppRoutes = () => (
       <Route path="/admin/discounts" element={<DiscountManager />} />
       <Route path="/farmer/reports" element={<FarmerReport />} />
       <Route path="/admin/reports" element={<AdminReports />} />
+      <Route path="/admin/order-manager" element={<AdminOrderManager />} />
       {/* 404 */}
       <Route path="*" element={<div style={{ padding: 16 }}>Not Found</div>} />
     </Routes>
@@ -109,7 +110,7 @@ function OrderShippingDetailWrapper() {
   }
 
   // Truyền sellerId vào component OrderShippingDetail
-  return <OrderShippingDetail sellerId={sellerId} />;
+  return <OrderShippingDetail sellerId={sellerId} orderId={Number(orderId)} />;
 }
 
 export default AppRoutes;

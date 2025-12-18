@@ -1,13 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react'; // Thêm useRef, useEffect
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-    Search, Bell, ChevronDown, Users, Box, ShoppingCart, 
-    DollarSign, Clock, Settings, BarChart, Menu, LogOut, User , Layers, Tag
+    Bell, ChevronDown, Users, ShoppingCart, 
+    DollarSign, BarChart, Menu, LogOut, Settings, TrendingUp, Package , ClipboardList
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../styles/Dashboard.css'; 
+import '../../styles/Dashboard.css';
 
-// --- IMPORTS CÁC COMPONENT CON ---
 import UserManager from './UserManager';
 import ProductManager from './ProductManager';
 import PendingFarmers from './PendingFarmers';
@@ -16,10 +15,7 @@ import BroadcastNotification from './BroadcastNotification';
 import PanelManager from './PanelManager';
 import DiscountManager from './DiscountManager';
 import AdminReports from './AdminReports';
-
-// -----------------------------------------------------------
-// 📚 INTERFACES CHUNG
-// -----------------------------------------------------------
+import AdminOrderManager from './OrderManager';
 
 interface Stats {
     totalUsers: number;
@@ -39,10 +35,6 @@ interface Order {
     status: 'pending' | 'completed' | 'shipping', 
     date: string 
 }
-
-// -----------------------------------------------------------
-// DỮ LIỆU KHỞI TẠO
-// -----------------------------------------------------------
 
 const initialStats: Stats = {
     totalUsers: 245,
@@ -64,157 +56,107 @@ const initialRecentOrders: Order[] = [
 
 const formatCurrency = (amount: number) => amount.toLocaleString('vi-VN') + 'đ';
 
-// Cấu trúc menu Sidebar
 const menuItems = [
-    { name: 'Tổng quan', icon: BarChart, key: 'dashboard', sub: null },
-    { name: 'Quản lý người dùng', icon: Users, key: 'users', sub: [
-        { name: 'Danh sách người dùng', key: 'users_list' },
-        { name: 'Phân quyền người dùng', key: 'roles' },
-    ]},
-    { name: 'Quản lý sản phẩm', icon: ShoppingCart, key: 'products', sub: [
-        { name: 'Danh mục sản phẩm', key: 'categories' },
-        { name: 'Danh sách sản phẩm', key: 'product_list' },
-    ]},
-    { name: 'Quản lý đơn hàng', icon: Box, key: 'orders', sub: [
-        { name: 'Đơn hàng đang chờ', key: 'pending_orders' },
-        { name: 'Đơn hàng đã xử lý', key: 'processed_orders' },
-    ]},
-    { name: 'Quản lý khuyến mãi', icon: Tag, key: 'discounts', sub: null },
-    { name: 'Giao diện & Panels', icon: Layers, key: 'ui_settings', sub: [
-        { name: 'Quản lý Panels', key: 'panel_manager' },
-    ]},
-    { name: 'Doanh thu & Báo cáo', icon: DollarSign, key: 'reports', sub: [
-        { name: 'Biểu đồ doanh thu', key: 'revenue_chart' },
-    ]},
-    { name: 'Gửi thông báo hệ thống', icon: Bell, key: 'broadcast', sub: null }, 
+    { name: 'Tổng quan', icon: BarChart, key: 'dashboard' },
+    { name: 'Quản lý người dùng', icon: Users, key: 'users_list' },
+    { name: 'Danh mục', icon: Package, key: 'categories' },
+    { name: 'Quản lý sản phẩm', icon: ShoppingCart, key: 'product_list' },
+    { name: 'Quản lý đơn hàng', icon: ClipboardList, key: 'order_manager' },
+    { name: 'Khuyến mãi', icon: TrendingUp, key: 'discounts' },
+    { name: 'Báo cáo', icon: DollarSign, key: 'revenue_chart' },
+    { name: 'Thông báo', icon: Bell, key: 'broadcast' },
 ];
 
 export default function AdminDashboard() {
     const [activeMenu, setActiveMenu] = useState('dashboard');
-    const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    
     const [stats] = useState<Stats>(initialStats);
     const [recentOrders] = useState<Order[]>(initialRecentOrders);
     const navigate = useNavigate();
-    
-    const toggleSubMenu = (key: string) => {
-        setOpenSubMenu(openSubMenu === key ? null : key);
-    };
-    
-    // RENDER LOGIC
-    const renderSidebarMenu = () => (
-        <nav className="sidebar-menu">
-            {menuItems.map(item => (
-                <React.Fragment key={item.key}>
-                    <div 
-                        className={`menu-item ${activeMenu === item.key || (item.sub && openSubMenu === item.key) ? 'active' : ''} ${item.sub ? 'has-submenu' : ''}`}
-                        onClick={() => {
-                            if (item.sub) {
-                                toggleSubMenu(item.key);
-                            } else {
-                                setActiveMenu(item.key);
-                                setOpenSubMenu(null);
-                            }
-                        }}
-                    >
-                        <item.icon size={20} className="menu-icon" />
-                        <span className="menu-text">{item.name}</span>
-                        {item.sub && <ChevronDown size={16} className={`chevron ${openSubMenu === item.key ? 'open' : ''}`} />}
-                    </div>
-
-                    {item.sub && (
-                        <div className={`submenu ${openSubMenu === item.key ? 'open' : ''}`}>
-                            {item.sub.map(subItem => (
-                                <div 
-                                    key={subItem.key}
-                                    className={`submenu-item ${activeMenu === subItem.key ? 'active' : ''}`}
-                                    onClick={() => setActiveMenu(subItem.key)}
-                                >
-                                    <span className="menu-text">{subItem.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </React.Fragment>
-            ))}
-        </nav>
-    );
 
     const renderMainContent = () => {
         if (activeMenu === 'users_list') return <UserManager />;
         if (activeMenu === 'categories') return <Categories />;
         if (activeMenu === 'product_list') return <ProductManager />;
-        if (activeMenu === 'roles') return <PendingFarmers />;
+        if (activeMenu === 'order_manager') return <AdminOrderManager />;
         if (activeMenu === 'broadcast') return <BroadcastNotification />;
-        if (activeMenu === 'panel_manager') return <PanelManager />;
         if (activeMenu === 'discounts') return <DiscountManager />;
-        if (activeMenu === 'revenue_chart' || activeMenu === 'transaction_report') {
-            return <AdminReports />;
-        }
-        if (activeMenu !== 'dashboard') {
-             const menuItem = menuItems.find(i => i.key === activeMenu) || menuItems.flatMap(i => i.sub || []).find(i => i.key === activeMenu);
-             return (
-                <div className="dashboard-content-placeholder">
-                    <h2>{menuItem?.name || 'Trang không xác định'}</h2>
-                    <p>Đây là khu vực quản lý **{menuItem?.name || 'Chức năng'}**. Nội dung chi tiết sẽ được phát triển tại đây.</p>
-                </div>
-            );
-        }
-
+        if (activeMenu === 'revenue_chart') return <AdminReports />;
+        
         return (
-            <div className="dashboard-content-grid">
-                <div className="main-stats-grid">
-                    <StatCard icon={Users} title="Tổng người dùng" value={stats.totalUsers.toLocaleString('vi-VN')} color="blue" />
-                    <StatCard icon={Box} title="Sản phẩm đang bán" value={stats.activeProducts.toLocaleString('vi-VN')} color="orange" />
-                    <StatCard icon={Clock} title="Đơn hàng chờ xử lý" value={stats.pendingOrders.toLocaleString('vi-VN')} color="red" />
-                    <StatCard icon={DollarSign} title="Doanh thu (tháng)" value={`${(stats.totalRevenue / 1000000).toFixed(1)} Triệu`} color="green" />
+            <div className="dashboard-grid">
+                <div className="stats-grid">
+                    <StatCard 
+                        icon={Users} 
+                        title="Tổng người dùng" 
+                        value={stats.totalUsers} 
+                        bgColor="#3B82F6"
+                    />
+                    <StatCard 
+                        icon={ShoppingCart} 
+                        title="Sản phẩm" 
+                        value={stats.activeProducts} 
+                        bgColor="#10B981"
+                    />
+                    <StatCard 
+                        icon={Package} 
+                        title="Đơn hàng chờ" 
+                        value={stats.pendingOrders} 
+                        bgColor="#F59E0B"
+                    />
+                    <StatCard 
+                        icon={DollarSign} 
+                        title="Doanh thu tháng" 
+                        value={(stats.totalRevenue / 1000000).toFixed(1)} 
+                        suffix="M"
+                        bgColor="#EF4444"
+                    />
                 </div>
-                
-                <div className="charts-container">
-                    <div className="dashboard-card chart-placeholder">
-                        <h2>Doanh thu 6 tháng gần nhất</h2>
-                        <p className="chart-type">(Placeholder: Biểu đồ cột)</p>
+
+                <div className="charts-section">
+                    <div className="chart-card">
+                        <h3>Doanh thu 6 tháng</h3>
+                        <div className="chart-placeholder">
+                            <BarChart size={40} />
+                            <p>Biểu đồ cột</p>
+                        </div>
                     </div>
-                    <div className="dashboard-card chart-placeholder small-chart">
-                        <h2>Tỷ lệ đơn hàng</h2>
-                        <p className="chart-type">(Placeholder: Biểu đồ tròn)</p>
+                    <div className="chart-card">
+                        <h3>Trạng thái đơn hàng</h3>
+                        <div className="chart-placeholder">
+                            <TrendingUp size={40} />
+                            <p>Biểu đồ tròn</p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="dashboard-card full-width">
-                    <h2>Đơn hàng gần đây</h2>
+                <div className="orders-card">
+                    <h3>Đơn hàng gần đây</h3>
                     <RecentOrdersTable orders={recentOrders} />
                 </div>
             </div>
         );
     };
-    
+
     return (
-        <div className={`admin-layout ${sidebarCollapsed ? 'collapsed' : ''}`}>
-            {/* HEADER ĐÃ CẬP NHẬT */}
-            <AdminHeader 
-                sidebarCollapsed={sidebarCollapsed} 
-                toggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+        <div className={`admin-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <AdminSidebar 
+                activeMenu={activeMenu}
+                setActiveMenu={setActiveMenu}
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
             />
 
-            <div className="main-body-wrapper">
-                <aside className="sidebar">
-                    <button className="toggle-btn" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
-                        {sidebarCollapsed ? '▶️' : '◀️'}
-                    </button>
-                    <div className="sidebar-logo">
-                        <h3>MENU HỆ THỐNG</h3>
-                    </div>
-                    {renderSidebarMenu()}
-                </aside>
+            <div className="admin-main">
+                <AdminHeader 
+                    sidebarCollapsed={sidebarCollapsed}
+                    toggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+                />
 
-                <main className="dashboard-main-content">
-                    <h1>{menuItems.find(i => i.key === activeMenu)?.name || 
-                         menuItems.flatMap(i => i.sub || []).find(i => i.key === activeMenu)?.name || 'Tổng quan'}
-                    </h1>
-                    <p className="subtitle">Chào mừng trở lại, Admin!</p>
-                    
+                <main className="admin-content">
+                    <div className="content-header">
+                        <h1>{menuItems.find(i => i.key === activeMenu)?.name || 'Dashboard'}</h1>
+                    </div>
                     {renderMainContent()}
                 </main>
             </div>
@@ -222,19 +164,44 @@ export default function AdminDashboard() {
     );
 }
 
-// -----------------------------------------------------------
-// 📚 ADMIN HEADER COMPONENT (FIXED DROPDOWN)
-// -----------------------------------------------------------
+const AdminSidebar: React.FC<{ activeMenu: string; setActiveMenu: (key: string) => void; sidebarCollapsed: boolean; setSidebarCollapsed: (collapsed: boolean) => void }> = 
+({ activeMenu, setActiveMenu, sidebarCollapsed, setSidebarCollapsed }) => (
+    <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+            <div className="logo">
+                {!sidebarCollapsed && <span>AgriChain Admin</span>}
+            </div>
+            <button 
+                className="collapse-btn"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+                <Menu size={20} />
+            </button>
+        </div>
 
-const AdminHeader: React.FC<{ sidebarCollapsed: boolean, toggleSidebar: () => void }> = ({ toggleSidebar }) => {
+        <nav className="sidebar-nav">
+            {menuItems.map(item => (
+                <button
+                    key={item.key}
+                    className={`nav-item ${activeMenu === item.key ? 'active' : ''}`}
+                    onClick={() => setActiveMenu(item.key)}
+                    title={item.name}
+                >
+                    <item.icon size={22} />
+                    {!sidebarCollapsed && <span>{item.name}</span>}
+                </button>
+            ))}
+        </nav>
+    </aside>
+);
+
+const AdminHeader: React.FC<{ sidebarCollapsed: boolean; toggleSidebar: () => void }> = 
+({ sidebarCollapsed, toggleSidebar }) => {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
-    
-    // State quản lý dropdown
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Xử lý click ra ngoài để đóng menu
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -248,67 +215,48 @@ const AdminHeader: React.FC<{ sidebarCollapsed: boolean, toggleSidebar: () => vo
     return (
         <header className="admin-header">
             <div className="header-left">
-                <div className="logo-container">
-                    <span className="logo-text">
-                        AgriChain <span className="brand-accent">Admin</span>
-                    </span>
-                </div>
-                <button className="icon-btn menu-toggle-btn" onClick={toggleSidebar}>
-                    <Menu size={20} />
+                <button className="menu-toggle" onClick={toggleSidebar}>
+                    <Menu size={24} />
                 </button>
             </div>
 
-            <div className="header-controls">
-                <div className="search-bar">
-                    <Search size={18} className="search-icon" />
-                    <input type="text" placeholder="Tìm kiếm..." />
-                </div>
-
-                <button className="icon-btn" title="Thông báo">
+            <div className="header-right">
+                <button className="notification-btn">
                     <Bell size={20} />
-                    <span className="badge-dot"></span>
+                    <span className="dot"></span>
                 </button>
 
-                {/* --- USER DROPDOWN --- */}
-                <div className="admin-user-dropdown" ref={dropdownRef}>
+                <div className="user-menu" ref={dropdownRef}>
                     <button 
-                        className={`admin-profile-btn ${isDropdownOpen ? 'active' : ''}`}
+                        className="user-btn"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     >
-                        <div className="admin-avatar">
-                            <User size={18} />
-                        </div>
-                        <div className="admin-info">
-                            <span className="admin-name">{user?.fullName || 'Admin'}</span>
-                            <span className="admin-role">Quản trị viên</span>
-                        </div>
-                        <ChevronDown size={16} className={`chevron ${isDropdownOpen ? 'rotate' : ''}`} />
+                        <div className="user-avatar">{user?.fullName?.charAt(0) || 'A'}</div>
+                        {!sidebarCollapsed && (
+                            <>
+                                <div className="user-info">
+                                    <span className="user-name">{user?.fullName || 'Admin'}</span>
+                                </div>
+                                <ChevronDown size={16} />
+                            </>
+                        )}
                     </button>
 
                     {isDropdownOpen && (
-                        <div className="admin-dropdown-menu">
-                            <div className="menu-header">
-                                <strong>{user?.fullName}</strong>
-                                <span>{user?.email}</span>
+                        <div className="dropdown-menu">
+                            <div className="menu-item" onClick={() => navigate('/profile')}>
+                                <Settings size={16} /> Cài đặt
                             </div>
                             <div className="menu-divider"></div>
-                            
-                            <button className="menu-item" onClick={() => { setIsDropdownOpen(false); navigate('/profile'); }}>
-                                <Settings size={16} /> Thiết lập tài khoản
-                            </button>
-                            
-                            <div className="menu-divider"></div>
-
-                            <button 
-                                className="menu-item text-red"
+                            <div 
+                                className="menu-item logout"
                                 onClick={() => {
-                                    setIsDropdownOpen(false);
                                     logout();
                                     navigate('/login');
                                 }}
                             >
                                 <LogOut size={16} /> Đăng xuất
-                            </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -317,46 +265,50 @@ const AdminHeader: React.FC<{ sidebarCollapsed: boolean, toggleSidebar: () => vo
     );
 };
 
-const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string, color: string }> = ({ icon: Icon, title, value, color }) => (
-    <div className={`stat-card ${color}`}>
-        <div className="card-content">
-            <div className="icon-wrapper">
-                <Icon size={30} />
-            </div>
+const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number | string; suffix?: string; bgColor: string }> = 
+({ icon: Icon, title, value, suffix, bgColor }) => (
+    <div className="stat-card" style={{ borderTopColor: bgColor }}>
+        <div className="stat-icon" style={{ backgroundColor: bgColor }}>
+            <Icon size={28} />
+        </div>
+        <div className="stat-content">
             <p className="stat-title">{title}</p>
-            <h3 className="stat-value">{value}</h3>
+            <h2 className="stat-value">
+                {typeof value === 'number' ? value.toLocaleString('vi-VN') : value}
+                {suffix && <span className="stat-suffix">{suffix}</span>}
+            </h2>
         </div>
     </div>
 );
 
 const RecentOrdersTable: React.FC<{ orders: Order[] }> = ({ orders }) => (
-    <table className="data-table">
-        <thead>
-            <tr>
-                <th>Mã đơn</th>
-                <th>Khách hàng</th>
-                <th>Tổng tiền</th>
-                <th>Trạng thái</th>
-                <th>Ngày</th>
-                <th>Thao tác</th>
-            </tr>
-        </thead>
-        <tbody>
-            {orders.map(order => (
-                <tr key={order.id}>
-                    <td><strong>{order.id}</strong></td>
-                    <td>{order.customer}</td>
-                    <td>{formatCurrency(order.total)}</td>
-                    <td>
-                        <span className={`badge ${order.status}`}>
-                            {order.status === 'pending' ? 'Chờ xử lý' :
-                             order.status === 'shipping' ? 'Đang giao' : 'Hoàn thành'}
-                        </span>
-                    </td>
-                    <td>{order.date}</td>
-                    <td><button className="action-btn">Chi tiết</button></td>
+    <div className="table-wrapper">
+        <table className="data-table">
+            <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày</th>
                 </tr>
-            ))}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {orders.map(order => (
+                    <tr key={order.id}>
+                        <td className="bold">{order.id}</td>
+                        <td>{order.customer}</td>
+                        <td>{formatCurrency(order.total)}</td>
+                        <td>
+                            <span className={`status-badge ${order.status}`}>
+                                {order.status === 'pending' ? 'Chờ xử lý' :
+                                 order.status === 'shipping' ? 'Đang giao' : 'Hoàn thành'}
+                            </span>
+                        </td>
+                        <td>{order.date}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
 );
