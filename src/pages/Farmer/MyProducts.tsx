@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { Search, LogOut, User, BarChart, ShoppingCart, Package, Layers, Settings, Zap, Star, ChevronDown, DollarSign, TrendingUp, AlertTriangle, ArrowRight, PlusCircle } from 'lucide-react';
 import '../../styles/MyProduct.css';
 import { useNavigate } from 'react-router-dom';
@@ -37,9 +38,11 @@ const farmerMenu = [
 const FarmerHeader: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const { user, logout } = useAuth();
 
-    const handleLogout = () => { localStorage.clear(); window.location.href = '/login'; };
+    const handleLogout = () => {
+        logout();
+    };
     const handleMenuClick = (action: string) => {
         setIsMenuOpen(false);
         if (action === 'profile') navigate('/profile');
@@ -50,8 +53,8 @@ const FarmerHeader: React.FC = () => {
             <div className="logo-container">AgriChain <span className="brand-accent">Market</span></div>
             <div className="header-controls">
                 <div className="profile-dropdown-container" onClick={() => setIsMenuOpen(v => !v)}>
-                    <div className="avatar-placeholder">{user?.full_name?.[0]?.toUpperCase() || 'F'}</div>
-                    <span className="username">{user?.full_name || 'Nông dân'} <ChevronDown size={16}/></span>
+                    <div className="avatar-placeholder">{user?.fullName?.[0]?.toUpperCase() || 'F'}</div>
+                    <span className="username">{user?.fullName || 'Nông dân'} <ChevronDown size={16}/></span>
                     {isMenuOpen && (
                         <div className="profile-dropdown-menu">
                             <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); handleMenuClick('profile'); }}>
