@@ -188,47 +188,29 @@ const CheckoutPage: React.FC = () => {
         // User có thể vào Order History để thanh toán lại
     };
 
-    // ✅ CẬP NHẬT: Tạo thanh toán MoMo với error handling tốt hơn
-    const createMomoPayment = async (orderId: number) => {
+    // ✅ ĐẢM BẢO: Khi thanh toán MoMo, chỉ cần truyền đúng số tiền tổng cộng (finalAmount) và orderId đầu tiên (test/demo)
+    const createMomoPayment = async (orderId: number, totalAmount: number) => {
         try {
-            console.log('📤 Tạo payment MoMo cho order:', orderId);
-            
             const res = await fetch('http://localhost:3000/api/payments/momo/create-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order_id: orderId })
+                body: JSON.stringify({ order_id: orderId, total_amount: totalAmount })
             });
-            
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-            
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            console.log('📥 MoMo response:', data);
-            
             if (data.success && data.payUrl) {
-                // ✅ Lưu orderId để tracking
                 sessionStorage.setItem('pending_payment_order', orderId.toString());
-                
-                // ✅ REDIRECT ĐẾN MOMO
-                console.log('🔄 Redirecting to MoMo:', data.payUrl);
                 window.location.href = data.payUrl;
                 return;
             }
-            
-            // Fallback: Hiển thị QR nếu có
             if (data.qrCodeUrl) {
                 setCurrentOrderId(orderId);
                 setQrImage(data.qrCodeUrl);
                 setShowQrModal(true);
                 return;
             }
-            
-            // Không có payUrl và qrCodeUrl
             throw new Error(data.error || 'Không nhận được URL thanh toán từ MoMo');
-            
         } catch (err: any) {
-            console.error('❌ MoMo Error:', err);
             alert(`❌ Lỗi kết nối MoMo: ${err.message}`);
             setIsSubmitting(false);
         }
@@ -239,21 +221,16 @@ const CheckoutPage: React.FC = () => {
         e.preventDefault();
         setError('');
         setSuccess('');
-        
         if (!userId) return setError('Bạn cần đăng nhập.');
-        
-        // ✅ CHECK: Validation
         if (fieldErrors.name || fieldErrors.phone || fieldErrors.shipping_address) {
             setError('Vui lòng sửa các lỗi trên form trước khi tiếp tục');
             return;
         }
-        
         if (cartItems.length === 0) return setError('Giỏ hàng trống.');
-        
         setIsSubmitting(true);
 
         try {
-            // ✅ PAYLOAD TẠO ĐƠN HÀNG
+            // ✅ Tạo 1 đơn hàng duy nhất cho tất cả sản phẩm (test/demo)
             const orderPayload = {
                 shipping_address: `${form.name} - ${form.phone} - ${form.shipping_address}${form.note ? ` (Ghi chú: ${form.note})` : ''}`,
                 items: cartItems.map(item => ({
@@ -263,12 +240,8 @@ const CheckoutPage: React.FC = () => {
                 })),
                 payment_method: paymentMethod,
                 discount_code: appliedDiscount ? appliedDiscount.code : null
-
             };
 
-            console.log('📤 Tạo đơn hàng:', orderPayload);
-
-            // 1️⃣ TẠO ĐƠN HÀNG TRƯỚC
             const orderRes = await fetch(`http://localhost:3000/api/orders/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -282,41 +255,28 @@ const CheckoutPage: React.FC = () => {
 
             const orderData = await orderRes.json();
             const orderId = orderData.order_id;
-            
-            console.log('✅ Đơn hàng đã tạo:', orderId);
-
-            // ✅ KIỂM TRA: orderId phải là số hợp lệ
             if (!orderId || isNaN(Number(orderId))) {
                 throw new Error('Backend không trả về order_id hợp lệ');
             }
 
-            // 2️⃣ XỬ LÝ THANH TOÁN DỰA TRÊN PHƯƠNG THỨC
             if (paymentMethod === 'cod') {
-                // COD → Hoàn tất ngay
                 setSuccess(
                     `✅ Đặt hàng thành công!\n` +
                     `📦 Mã đơn: #${orderId}\n` +
                     `💵 Thanh toán khi nhận hàng`
                 );
-                
                 setCartItems([]);
                 localStorage.removeItem('cart');
                 window.dispatchEvent(new Event('cart-updated'));
-                
             } else if (paymentMethod === 'momo') {
-                // MOMO → Gọi API tạo payment
-                console.log('📱 Tạo thanh toán MoMo cho order:', orderId);
-                await createMomoPayment(orderId);
-                
+                // Chỉ truyền orderId đầu tiên và số tiền tổng cộng (finalAmount)
+                await createMomoPayment(orderId, finalAmount);
             } else if (paymentMethod === 'vnpay' || paymentMethod === 'zalopay') {
-                // Demo QR
                 sessionStorage.setItem('pendingOrder', JSON.stringify({ order_id: orderId }));
                 setShowQrModal(true);
                 setQrImage(`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=DEMO_ORDER_${orderId}`);
             }
-            
         } catch (err: any) {
-            console.error('❌ Lỗi:', err);
             setError(`❌ ${err.message || 'Lỗi kết nối server'}`);
         } finally {
             setIsSubmitting(false);

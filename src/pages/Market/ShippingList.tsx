@@ -86,7 +86,7 @@ const ShippingList: React.FC = () => {
         
         // Nếu có orderId trong URL, chỉ hiển thị đơn đó
         if (orderId) {
-          const filtered = uniqueOrders.filter(order => order.order_id === Number(orderId));
+          const filtered = uniqueOrders.filter((order: ShippingInfo) => order.order_id === Number(orderId));
           console.log('✅ Filtered for orderId', orderId, ':', filtered);
           setList(filtered);
         } else {
