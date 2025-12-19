@@ -357,9 +357,57 @@ const CheckoutPage: React.FC = () => {
                     <CheckCircle size={64} color="#28a745" style={{marginBottom: 20}} />
                     <h2 style={{color: '#28a745'}}>Đặt hàng thành công!</h2>
                     <p>{success}</p>
-                    <div style={{marginTop: 30, display:'flex', gap: 15, justifyContent:'center'}}>
-                        <button className="confirm-btn" onClick={() => navigate('/products')}>Tiếp tục mua sắm</button>
-                        <button className="confirm-btn" style={{background:'#007bff'}} onClick={() => navigate('/order-history')}>Xem đơn hàng</button>
+                    <div style={{marginTop: 30, display:'flex', gap: 15, justifyContent:'center', flexWrap: 'wrap'}}>
+                        <button 
+                            onClick={() => navigate('/products')}
+                            style={{
+                                background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '14px 28px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                                transition: 'all 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 18px rgba(76, 175, 80, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
+                            }}
+                        >
+                            Tiếp tục mua sắm
+                        </button>
+                        <button 
+                            onClick={() => navigate('/order-history')}
+                            style={{
+                                background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '14px 28px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)',
+                                transition: 'all 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 18px rgba(33, 150, 243, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
+                            }}
+                        >
+                            Xem đơn hàng
+                        </button>
                     </div>
                 </main>
             </div>

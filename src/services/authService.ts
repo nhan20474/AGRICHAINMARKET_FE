@@ -192,5 +192,30 @@ export const authService = {
       }
       throw new Error('Không thể kết nối đến máy chủ');
     }
-  }
+  },
+
+  /**
+   * Cập nhật thông tin cá nhân
+   * @param id ID người dùng
+   * @param data Thông tin cập nhật: { full_name, phone_number, address }
+   */
+  async updateUser(id: string, data: { full_name: string; phone_number: string; address: string }): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/profile/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Cập nhật thông tin thất bại');
+      }
+      return result;
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  },
 };

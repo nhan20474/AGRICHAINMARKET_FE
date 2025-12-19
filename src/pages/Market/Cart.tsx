@@ -105,7 +105,10 @@ const CartPage: React.FC = () => {
             });
             
             // Load lại giỏ hàng để cập nhật tổng tiền chính xác
-            fetchCart(); 
+            fetchCart();
+            
+            // ✅ Dispatch event để Header cập nhật ngay
+            window.dispatchEvent(new Event('cart-updated'));
         } catch (err) {
             console.error(err);
         }
@@ -119,6 +122,10 @@ const CartPage: React.FC = () => {
         try {
             await fetch(`http://localhost:3000/api/cart/${userId}/${productId}`, { method: 'DELETE' });
             fetchCart();
+            
+            // ✅ Dispatch event để Header cập nhật ngay
+            window.dispatchEvent(new Event('cart-updated'));
+            
             setNotify('Đã xóa sản phẩm!');
             setTimeout(() => setNotify(''), 1500);
         } catch (err) {
@@ -174,6 +181,50 @@ const CartPage: React.FC = () => {
 
     if (loading) return <div className="p-8 text-center">Đang tải giỏ hàng...</div>;
 
+    // Nếu chưa đăng nhập, hiển thị yêu cầu đăng nhập
+    if (!userId) {
+        return (
+            <div className="market-page">
+                <main className="content-wrapper cart-page-content">
+                    <h2 className="section-title">🛒 Giỏ hàng của bạn</h2>
+                    <div className="empty-cart">
+                        <ShoppingBag size={64} color="#eee" style={{marginBottom: 15}}/>
+                        <p>Bạn cần đăng nhập để xem giỏ hàng.</p>
+                        <button 
+                            onClick={() => navigate('/login')}
+                            style={{
+                                background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '14px 32px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)',
+                                transition: 'all 0.3s ease',
+                                marginTop: '20px'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.3)';
+                            }}
+                        >
+                            Đăng nhập ngay
+                        </button>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="market-page">
             <main className="content-wrapper cart-page-content">
@@ -193,8 +244,34 @@ const CartPage: React.FC = () => {
                     <div className="empty-cart">
                         <ShoppingBag size={64} color="#eee" style={{marginBottom: 15}}/>
                         <p>Giỏ hàng của bạn đang trống.</p>
-                        <button className="back-btn" onClick={() => navigate('/products')}>
-                            <ArrowLeft size={18} /> Tiếp tục mua sắm
+                        <button 
+                            onClick={() => navigate('/products')}
+                            style={{
+                                background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '14px 32px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)',
+                                transition: 'all 0.3s ease',
+                                marginTop: '20px'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.3)';
+                            }}
+                        >
+                            <ArrowLeft size={20} /> Tiếp tục mua sắm
                         </button>
                     </div>
                 ) : (

@@ -16,8 +16,20 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
 
     // --- State quản lý dữ liệu ---
     const [cartCount, setCartCount] = useState(0);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadCount, setUnreadCount] = useState(() => {
+        // Khôi phục count từ localStorage khi refresh
+        const saved = localStorage.getItem('unreadCount');
+        const count = saved ? Number(saved) : 0;
+        return count;
+    });
     const [popup, setPopup] = useState<string | null>(null);
+    
+    // --- State cho animation ---
+    const [cartBounce, setCartBounce] = useState(false);
+    const [notificationPulse, setNotificationPulse] = useState(false);
+    const prevCartCount = useRef(0);
+    const prevUnreadCount = useRef(-1);
+    const socketRef = useRef<any>(null); // ✅ Store socket to prevent duplicates
 
     // --- State quản lý Dropdown Menu ---
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -36,88 +48,192 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
         };
     }, []);
 
-    // 2. Logic cập nhật giỏ hàng (Giữ nguyên)
+    // 2. Logic cập nhật giỏ hàng - Real-time với polling backup
     useEffect(() => {
+        let pollingInterval: NodeJS.Timeout;
+        
         // Hàm cập nhật giỏ hàng
-        const updateCartCount = () => {
+        const updateCartCount = async () => {
+            // Nếu chưa đăng nhập, set về 0
+            if (!user?.id) {
+                setCartCount(0);
+                localStorage.removeItem('cart');
+                return;
+            }
+
             const cartStr = localStorage.getItem('cart');
             if (cartStr) {
                 try {
                     const cart = JSON.parse(cartStr);
                     if (Array.isArray(cart) && cart.length > 0) {
-                        setCartCount(cart.reduce((sum, item) => sum + (item.quantity || 1), 0));
+                        const totalQty = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                        setCartCount(totalQty);
                     } else { setCartCount(0); }
                 } catch { setCartCount(0); }
             } else { setCartCount(0); }
+            
+            // Đồng bộ từ API nếu user đã đăng nhập (đảm bảo chính xác)
+            if (user?.id) {
+                try {
+                    const res = await fetch(`http://localhost:3000/api/cart/${user.id}`);
+                    const data = await res.json();
+                    if (data.items && Array.isArray(data.items)) {
+                        const totalQty = data.items.reduce((sum: number, item: any) => 
+                            sum + (item.cart_quantity || 0), 0);
+                        
+                        // Trigger animation nếu số lượng tăng
+                        if (totalQty > prevCartCount.current && prevCartCount.current > 0) {
+                            setCartBounce(true);
+                            setTimeout(() => setCartBounce(false), 400);
+                        }
+                        prevCartCount.current = totalQty;
+                        
+                        setCartCount(totalQty);
+                        // Cập nhật localStorage để đồng bộ
+                        localStorage.setItem('cart', JSON.stringify(data.items));
+                    }
+                } catch (err) {
+                    console.error('Lỗi đồng bộ giỏ hàng:', err);
+                }
+            }
         };
 
         updateCartCount();
         
-        // ✅ Lắng nghe event từ các component khác
+        // ✅ Lắng nghe event từ các component khác (Real-time)
         window.addEventListener('storage', updateCartCount);
-        window.addEventListener('cart-updated', updateCartCount); // ← QUAN TRỌNG!
+        window.addEventListener('cart-updated', updateCartCount);
+        
+        // ✅ Polling backup mỗi 30 giây để đảm bảo đồng bộ
+        pollingInterval = setInterval(updateCartCount, 30000);
         
         return () => {
             window.removeEventListener('storage', updateCartCount);
             window.removeEventListener('cart-updated', updateCartCount);
+            clearInterval(pollingInterval);
         };
-    }, []);
+    }, [user]);
 
-    // ✅ Socket.IO cho thông báo (đã có)
+    // ✅ Socket.IO cho thông báo với polling backup
     useEffect(() => {
-        const updateUnreadCount = (e?: any) => {
-            // Fetch từ API hoặc nhận từ event
-            if (e && e.detail !== undefined) {
-                setUnreadCount(Number(e.detail));
-                return;
-            }
-            
+        let pollingInterval: NodeJS.Timeout;
+        
+        // Lấy userId từ user prop hoặc localStorage
+        let userId: number | null = null;
+        if (user?.id) {
+            userId = user.id;
+        } else {
             const userStr = localStorage.getItem('user');
-            let userId: number | null = null;
             if (userStr) { 
                 try { userId = Number(JSON.parse(userStr).id); } catch {} 
             }
+        }
+        
+        // Nếu không có userId, reset count và disconnect socket
+        if (!userId) {
+            setUnreadCount(0);
+            localStorage.removeItem('unreadCount');
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+            return;
+        }
+        
+        const updateUnreadCount = async (e?: any) => {
+            // Fetch từ API hoặc nhận từ event
+            if (e && e.detail !== undefined) {
+                const count = Number(e.detail);
+                setUnreadCount(count);
+                localStorage.setItem('unreadCount', String(count));
+                if (count > prevUnreadCount.current && prevUnreadCount.current >= 0) {
+                    setNotificationPulse(true);
+                    setTimeout(() => setNotificationPulse(false), 1500);
+                }
+                prevUnreadCount.current = count;
+                return;
+            }
             
-            if (userId) {
-                fetch(`http://localhost:3000/api/notifications/user/${userId}/unread-count`)
-                    .then(res => res.json())
-                    .then(data => setUnreadCount(data.count || 0))
-                    .catch(() => setUnreadCount(0));
-            } else { setUnreadCount(0); }
+            // Fetch từ API
+            try {
+                const res = await fetch(`http://localhost:3000/api/notifications/user/${userId}/unread-count`, {
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                const data = await res.json();
+                
+                const newCount = data.unread_count || data.count || 0;
+                
+                // Trigger pulse nếu có thông báo mới
+                if (newCount > prevUnreadCount.current && prevUnreadCount.current >= 0) {
+                    setNotificationPulse(true);
+                    setTimeout(() => setNotificationPulse(false), 1500);
+                }
+                
+                prevUnreadCount.current = newCount;
+                setUnreadCount(newCount);
+                localStorage.setItem('unreadCount', String(newCount));
+            } catch (err) {
+                console.error('❌ Lỗi lấy số thông báo:', err);
+            }
         };
 
+        // Khởi tạo badge ngay từ đầu
         updateUnreadCount();
         window.addEventListener('notification-updated', updateUnreadCount);
 
-        // ✅ SOCKET.IO - Lắng nghe thông báo realtime
-        let socket: any;
-        const userStr = localStorage.getItem('user');
-        let userId: number | null = null;
-        if (userStr) { 
-            try { userId = Number(JSON.parse(userStr).id); } catch {} 
-        }
-        
-        if (userId) {
+        // ✅ SOCKET.IO - CHỈ TẠO MỘT LẦN
+        if (!socketRef.current) {
             try {
                 import('socket.io-client').then(({ io }) => {
-                    socket = io('http://localhost:3000');
+                    const socket = io('http://localhost:3000', {
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 1000
+                    });
+                    
+                    socketRef.current = socket;
                     socket.emit('register', userId);
                     
                     socket.on('notification', (data: any) => {
-                        console.log('🔔 Nhận thông báo mới:', data);
                         setPopup('Bạn có thông báo mới');
-                        updateUnreadCount(); // Cập nhật số badge
+                        
+                        // Delay 1 giây để backend kịp insert DB
+                        setTimeout(() => {
+                            updateUnreadCount();
+                        }, 1000);
+                        
                         setTimeout(() => setPopup(null), 2500);
                     });
+                    
+                    socket.on('connect', () => {
+                        socket.emit('register', userId);
+                    });
+                    
+                    socket.on('disconnect', () => {});
                 });
             } catch (err) {
-                console.error('Socket error:', err);
+                console.error('❌ Socket error:', err);
             }
         }
         
+        // ✅ Polling backup mỗi 30 giây
+        pollingInterval = setInterval(updateUnreadCount, 30000);
+        
         return () => {
+            console.log('🧹 Cleanup: removing event listeners');
             window.removeEventListener('notification-updated', updateUnreadCount);
-            if (socket) socket.disconnect?.();
+            clearInterval(pollingInterval);
+            // Socket vẫn giữ nguyên trong ref để tái sử dụng
+        };
+    }, [user]);
+    
+    // ✅ Cleanup socket khi component unmount hoàn toàn
+    useEffect(() => {
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
         };
     }, []);
 
@@ -137,19 +253,101 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
                 </div>
 
                 <div className="header-actions-right">
-                    {/* Icon Chuông */}
-                    <Link to="/notifications" className="icon-btn-wrapper">
-                        <button className="action-btn icon-only">
-                            <Bell size={22} />
-                            {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
-                        </button>
-                    </Link>
+                    {/* Icon Chuông - Chỉ hiện khi đã đăng nhập */}
+                    {user && (
+                        <Link to="/notifications" style={{ textDecoration: 'none' }}>
+                            <button 
+                                style={{
+                                    position: 'relative',
+                                    background: '#fff',
+                                    border: '1px solid #e5e5e5',
+                                    borderRadius: '8px',
+                                    padding: '10px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = '#4CAF50';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = '#e5e5e5';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <Bell size={20} color="#333" />
+                                {unreadCount > 0 && (
+                                    <span 
+                                        className={notificationPulse ? 'pulse' : ''}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '-4px',
+                                            right: '-4px',
+                                            background: '#ff4444',
+                                            color: '#fff',
+                                            borderRadius: '10px',
+                                            padding: '2px 6px',
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                            minWidth: '18px',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+                        </Link>
+                    )}
 
                     {/* Icon Giỏ hàng */}
-                    <Link to="/cart" className="icon-btn-wrapper">
-                        <button className="action-btn icon-only">
-                            <ShoppingCart size={22} />
-                            {cartCount > 0 && <span className="badge">{cartCount}</span>}
+                    <Link to="/cart" style={{ textDecoration: 'none' }}>
+                        <button 
+                            style={{
+                                position: 'relative',
+                                background: '#fff',
+                                border: '1px solid #e5e5e5',
+                                borderRadius: '8px',
+                                padding: '10px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = '#4CAF50';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = '#e5e5e5';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
+                        >
+                            <ShoppingCart size={20} color="#333" />
+                            {cartCount > 0 && (
+                                <span 
+                                    className={cartBounce ? 'bounce' : ''}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '-4px',
+                                        right: '-4px',
+                                        background: '#4CAF50',
+                                        color: '#fff',
+                                        borderRadius: '10px',
+                                        padding: '2px 6px',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        minWidth: '18px',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
                         </button>
                     </Link>
 
@@ -225,7 +423,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
                     <Link to="/shop" className={isActive('/shop')}>Trang chủ</Link>
                     <Link to="/products" className={isActive('/products')}>Sản phẩm</Link>
                     <Link to="/order-history" className={isActive('/order-history')}>Lịch sử mua hàng</Link>
-                    <Link to="/shipping-list" className={isActive('/shipping-list')}>Vận chuyển</Link>
+                  
                 </div>
                 <div className="navbar-search">
                     <Search size={18} className="search-icon" />

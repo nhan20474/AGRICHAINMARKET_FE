@@ -115,14 +115,15 @@ const logout = () => {
     // 1. Xóa thông tin đăng nhập
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    localStorage.removeItem('buyerId'); // Xóa luôn ID người mua (để fix lỗi shipping)
+    localStorage.removeItem('buyerId');
 
-    // 2. Xóa giỏ hàng của người dùng cũ
-    localStorage.removeItem('cart'); 
-    // Nếu bạn lưu giỏ hàng với tên khác (VD: 'cartItems'), hãy sửa lại cho đúng tên key
+    // 2. Xóa giỏ hàng và thông báo của người dùng cũ
+    localStorage.removeItem('cart');
+    localStorage.removeItem('unreadCount');
 
     // 3. Cập nhật UI ngay lập tức (để số trên Header về 0)
     window.dispatchEvent(new Event('cart-updated'));
+    window.dispatchEvent(new Event('notification-updated'));
 
     // 4. Chuyển hướng
     window.location.href = '/'; 

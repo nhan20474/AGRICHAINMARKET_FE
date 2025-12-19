@@ -7,6 +7,7 @@ import '../../styles/Login.css';
 interface LoginForm {
   email: string;
   password: string;
+  rememberMe: boolean;
 }
 
 export default function Login() {
@@ -16,11 +17,27 @@ export default function Login() {
   const [formData, setFormData] = useState<LoginForm>({
     email: '',
     password: '',
+    rememberMe: false,
   });
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
+
+  // Load saved credentials khi component mount
+  useState(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedPassword = localStorage.getItem('rememberedPassword');
+    const wasRemembered = localStorage.getItem('rememberMe') === 'true';
+
+    if (wasRemembered && savedEmail && savedPassword) {
+      setFormData({
+        email: savedEmail,
+        password: savedPassword,
+        rememberMe: true,
+      });
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +68,17 @@ export default function Login() {
         localStorage.setItem('token', response.token ?? '');
         if (response.user) {
           localStorage.setItem('user', JSON.stringify(response.user));
+        }
+
+        // Xử lý ghi nhớ đăng nhập
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberedEmail', formData.email);
+          localStorage.setItem('rememberedPassword', formData.password);
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberedPassword');
+          localStorage.removeItem('rememberMe');
         }
         
         await login(
@@ -95,7 +123,11 @@ export default function Login() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ 
+      ...formData, 
+      [name]: type === 'checkbox' ? checked : value 
+    });
   };
 
   return (
@@ -165,7 +197,12 @@ export default function Login() {
 
               <div className="form-options">
                 <label className="checkbox-wrapper">
-                  <input type="checkbox" />
+                  <input 
+                    type="checkbox" 
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleChange}
+                  />
                   <span className="checkbox-label">Ghi nhớ đăng nhập</span>
                 </label>
                 <a href="/forgot-password" className="forgot-link">

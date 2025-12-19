@@ -232,14 +232,28 @@ const ProductDetail: React.FC = () => {
         : "5.0";
 
     // --- ACTIONS ---
-    const handleAddToCart = async () => {
+    const handleAddToCart = async (event?: React.MouseEvent<HTMLButtonElement>) => {
         if (product.status === 'out_of_stock') return alert("Sản phẩm đã hết hàng!");
         if (!currentUserId) return navigate('/login');
+        
         try {
             await cartService.addItem(currentUserId, { product_id: Number(id), quantity });
-            window.dispatchEvent(new Event('cart-updated'));
+            
+            // Hiệu ứng bay vào giỏ hàng
+            if (event) {
+                const imageUrl = product.image_url || galleryImages[0] || '/img/default.jpg';
+                flyToCart(event.currentTarget, imageUrl);
+            }
+            
+            // Dispatch event sau 100ms
+            setTimeout(() => {
+                window.dispatchEvent(new Event('cart-updated'));
+            }, 100);
+            
             alert("Đã thêm vào giỏ hàng!");
-        } catch { alert("Lỗi thêm giỏ hàng"); }
+        } catch { 
+            alert("Lỗi thêm giỏ hàng"); 
+        }
     };
 
     const handleSubmitReview = async () => {
@@ -434,7 +448,7 @@ const ProductDetail: React.FC = () => {
                         </div>
                         <button 
                             className={`btn-add-to-cart ${isOutOfStock ? 'disabled' : ''}`}
-                            onClick={handleAddToCart} 
+                            onClick={(e) => handleAddToCart(e)} 
                             disabled={isOutOfStock}
                         >
                             <ShoppingCart size={20}/> 

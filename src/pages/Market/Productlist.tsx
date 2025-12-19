@@ -4,7 +4,9 @@ import { ShoppingCart, Eye, Filter, X, Star } from 'lucide-react';
 import { searchService } from '../../services/searchService';
 import { categoryService, Category } from '../../services/categoryService';
 import { cartService } from '../../services/cartService';
+import { flyToCart } from '../../utils/cartAnimation';
 import '../../styles/ProductList.css';
+
 
 type ContextType = { searchTerm: string };
 
@@ -78,7 +80,6 @@ const ProductList: React.FC = () => {
             };
 
             const data = await searchService.search(params);
-            console.log("API TRẢ VỀ:", data);
 
             const mapped = data
                 // Chỉ lấy sản phẩm AVAILABLE hoặc OUT_OF_STOCK
@@ -113,7 +114,7 @@ const ProductList: React.FC = () => {
     const totalPages = Math.ceil(products.length / itemsPerPage);
     const paginatedProducts = products.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-    const handleAddToCart = async (product: any) => {
+    const handleAddToCart = async (product: any, event: React.MouseEvent<HTMLButtonElement>) => {
         if (product.status === 'out_of_stock') {
             setNotify('Sản phẩm đã hết hàng!'); 
             setTimeout(() => setNotify(''), 1200);
@@ -123,13 +124,28 @@ const ProductList: React.FC = () => {
         if (!userId) {
             setNotify('Vui lòng đăng nhập!'); setTimeout(() => setNotify(''), 1200); return;
         }
+        
+        const button = event.currentTarget;
+        
         try {
+            // Thêm vào giỏ hàng
             await cartService.addItem(userId, { product_id: product.id, quantity: 1 });
             const updatedCart = await cartService.getCart(userId);
             localStorage.setItem('cart', JSON.stringify(updatedCart || []));
-            window.dispatchEvent(new Event('cart-updated'));
+            
+            // Hiệu ứng bay vào giỏ hàng
+            const imageUrl = product.image_url || '/img/default.jpg';
+            flyToCart(button, imageUrl);
+            
+            // Dispatch event sau 100ms để animation mượt hơn
+            setTimeout(() => {
+                window.dispatchEvent(new Event('cart-updated'));
+            }, 100);
+            
             setNotify('Đã thêm vào giỏ!');
-        } catch (err) { setNotify('Lỗi thêm giỏ hàng'); }
+        } catch (err) { 
+            setNotify('Lỗi thêm giỏ hàng'); 
+        }
         setTimeout(() => setNotify(''), 1200);
     };
 
@@ -208,8 +224,12 @@ const ProductList: React.FC = () => {
                                 {paginatedProducts.map(p => (
                                     <div key={p.id} className={`product-card ${p.status === 'out_of_stock' ? 'out-of-stock' : ''}`}>
                                         
-                                        {/* Hình ảnh + Nhãn Hết hàng */}
-                                        <div className="product-image-container" style={{ position: 'relative' }}>
+                                        {/* Hình ảnh + Nhãn Hết hàng - Click để xem chi tiết */}
+                                        <div 
+                                            className="product-image-container" 
+                                            style={{ position: 'relative', cursor: 'pointer' }}
+                                            onClick={() => navigate(`/product/${p.id}`)}
+                                        >
                                             {p.sale_price && Number(p.sale_price) < Number(p.price) && (
                                                 <div style={{
                                                     position: 'absolute',
@@ -239,7 +259,14 @@ const ProductList: React.FC = () => {
                                         
                                         {/* Thông tin sản phẩm */}
                                         <div className="product-info">
-                                            <h3 className="product-name" title={p.name}>{p.name}</h3>
+                                            <h3 
+                                                className="product-name" 
+                                                title={p.name}
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => navigate(`/product/${p.id}`)}
+                                            >
+                                                {p.name}
+                                            </h3>
                                             
                                             {/* --- RATING HIỂN THỊ --- */}
                                             <div
@@ -366,16 +393,15 @@ const ProductList: React.FC = () => {
                                                 )}
                                             </div>
                                             <div className="product-actions">
-                                                <button className="btn-icon" onClick={() => navigate(`/product/${p.id}`)}><Eye size={18} /></button>
-                                                
                                                 <button 
                                                     className={`btn-add ${p.status === 'out_of_stock' ? 'disabled' : ''}`} 
-                                                    onClick={() => handleAddToCart(p)}
+                                                    onClick={(e) => handleAddToCart(p, e)}
                                                     disabled={p.status === 'out_of_stock'}
                                                     style={{
                                                         opacity: p.status === 'out_of_stock' ? 0.6 : 1,
                                                         cursor: p.status === 'out_of_stock' ? 'not-allowed' : 'pointer',
-                                                        background: p.status === 'out_of_stock' ? '#ccc' : undefined
+                                                        background: p.status === 'out_of_stock' ? '#ccc' : undefined,
+                                                        width: '100%'
                                                     }}
                                                 >
                                                     <ShoppingCart size={16} /> {p.status === 'out_of_stock' ? 'Hết' : 'Thêm'}

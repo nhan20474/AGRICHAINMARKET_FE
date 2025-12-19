@@ -444,11 +444,45 @@ const OrderHistory: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                <div style={{textAlign: 'right'}}>
-                                    <span style={{fontSize: 16, color: '#666'}}>Tổng cộng: </span>
-                                    <strong style={{fontSize: 20, color: '#38b000'}}>
-                                        {Number(order.total_amount).toLocaleString('vi-VN')}đ
-                                    </strong>
+                                <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                                    {/* Nút Chi tiết */}
+                                    <button
+                                        onClick={() => navigate(`/shipping-list?orderId=${order.id}`)}
+                                        style={{
+                                            background: '#4CAF50',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '10px 20px',
+                                            borderRadius: 6,
+                                            cursor: 'pointer',
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            transition: 'all 0.3s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#45a049';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#4CAF50';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                    >
+                                        📦 Chi tiết vận chuyển
+                                    </button>
+                                    
+                                    {/* Tổng tiền */}
+                                    <div style={{textAlign: 'right'}}>
+                                        <span style={{fontSize: 16, color: '#666'}}>Tổng cộng: </span>
+                                        <strong style={{fontSize: 20, color: '#38b000'}}>
+                                            {Number(order.total_amount).toLocaleString('vi-VN')}đ
+                                        </strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
