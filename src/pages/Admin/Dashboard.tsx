@@ -62,6 +62,7 @@ const menuItems = [
     { name: 'Danh mục', icon: Package, key: 'categories' },
     { name: 'Quản lý sản phẩm', icon: ShoppingCart, key: 'product_list' },
     { name: 'Quản lý đơn hàng', icon: ClipboardList, key: 'order_manager' },
+    { name: 'Quản lý Panels', icon: Settings, key: 'panel_manager' },
     { name: 'Khuyến mãi', icon: TrendingUp, key: 'discounts' },
     { name: 'Báo cáo', icon: DollarSign, key: 'revenue_chart' },
     { name: 'Thông báo', icon: Bell, key: 'broadcast' },
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
         if (activeMenu === 'categories') return <Categories />;
         if (activeMenu === 'product_list') return <ProductManager />;
         if (activeMenu === 'order_manager') return <AdminOrderManager />;
+        if (activeMenu === 'panel_manager') return <PanelManager />;
         if (activeMenu === 'broadcast') return <BroadcastNotification />;
         if (activeMenu === 'discounts') return <DiscountManager />;
         if (activeMenu === 'revenue_chart') return <AdminReports />;
@@ -245,7 +247,7 @@ const AdminHeader: React.FC<{ sidebarCollapsed: boolean; toggleSidebar: () => vo
                     {isDropdownOpen && (
                         <div className="dropdown-menu">
                             <div className="menu-item" onClick={() => navigate('/profile')}>
-                                <Settings size={16} /> Cài đặt
+                                <Settings size={16} /> Hồ sơ
                             </div>
                             <div className="menu-divider"></div>
                             <div 

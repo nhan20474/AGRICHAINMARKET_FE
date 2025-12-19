@@ -229,7 +229,7 @@ const ProfilePage: React.FC = () => {
         }}>
             {/* Nút Back */}
             <button
-                onClick={() => navigate(-2)}
+                onClick={() => navigate(-1)}
                 style={{
                     background: 'none',
                     border: 'none',

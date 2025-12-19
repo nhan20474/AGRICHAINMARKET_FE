@@ -371,7 +371,7 @@ const ChangePassword: React.FC = () => {
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               type="button"
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate(-1)}
               style={{
                 flex: 1,
                 padding: '14px',
@@ -387,8 +387,9 @@ const ChangePassword: React.FC = () => {
               onMouseOver={(e) => e.currentTarget.style.background = '#f5f5f5'}
               onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
             >
-              Hủy
+              ← Quay lại
             </button>
+            
             <button
               type="submit"
               disabled={loading}
