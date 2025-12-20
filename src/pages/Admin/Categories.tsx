@@ -71,18 +71,30 @@ const Categories: React.FC = () => {
     }
 
     async function deleteCategory(id: number) {
-        // Thêm xác nhận trước khi xóa
         if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này không?')) return;
+
         setNotify('');
         try {
             const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Xóa danh mục thất bại');
-            setNotify('Xóa danh mục thành công!');
+            const data = await res.json();
+
+            if (!res.ok) {
+                // 🔴 Có sản phẩm trong danh mục
+                if (data?.error?.includes('Không thể xóa')) {
+                    setNotify(`⚠️ ${data.error}`);
+                    return;
+                }
+                throw new Error(data.error || 'Xóa danh mục thất bại');
+            }
+
+            setNotify('✅ Xóa danh mục thành công!');
             await fetchCategories();
+
         } catch (err: any) {
             setNotify(err.message || 'Xóa danh mục thất bại');
         }
-        setTimeout(() => setNotify(''), 1200);
+
+        setTimeout(() => setNotify(''), 2000);
     }
 
     useEffect(() => {

@@ -68,6 +68,8 @@ export default function Login() {
         localStorage.setItem('token', response.token ?? '');
         if (response.user) {
           localStorage.setItem('user', JSON.stringify(response.user));
+          localStorage.setItem('userId', String(response.user.id));
+          localStorage.setItem('role', response.user.role);
         }
 
         // Xử lý ghi nhớ đăng nhập

@@ -38,9 +38,12 @@ export const cartService = {
     });
     
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Thêm sản phẩm thất bại');
-    }
+    const err = await res.json();
+    throw {
+      status: res.status,
+      message: err.error || 'Thêm sản phẩm thất bại'
+    };
+  }
     return res.json();
   },
 

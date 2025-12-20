@@ -4,6 +4,11 @@
  * @param imageUrl - URL ảnh sản phẩm
  */
 export const flyToCart = (sourceElement: HTMLElement, imageUrl: string) => {
+    if (!sourceElement || !document.contains(sourceElement)) {
+    console.warn('⚠️ sourceElement không tồn tại, bỏ qua animation');
+    return;
+  }
+  
   const cartIcon = document.querySelector('a.icon-btn-wrapper[href="/cart"]');
   const sourceRect = sourceElement.getBoundingClientRect();
 

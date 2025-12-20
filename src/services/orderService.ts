@@ -10,6 +10,13 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
     cancelled: 'Đã hủy'
 };
 
+export const ADMIN_ORDER_ACTIONS = {
+    cancel: 'cancelled',
+    processing: 'processing',
+    shipped: 'shipped',
+    delivered: 'delivered'
+};
+
 export function getOrderStatusColor(status: string): string {
     const colors: Record<string, string> = {
         pending: '#FF9800',     // Cam
@@ -60,6 +67,21 @@ export interface Order {
         payment_method: string;
         payment_status: string;
     };
+}
+
+export interface AdminOrder {
+  id: number;
+  buyer_name: string;
+  farmer_name: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+}
+
+export interface AdminOrderDetail extends AdminOrder {
+  shipping_address: string;
+  discount_amount: number;
+  discount_code?: string;
 }
 
 // --- 3. Service Methods ---
@@ -174,27 +196,109 @@ export const orderService = {
         return result;
     },
 
-    // Thêm vào object orderService
-    adminGetAll: async () => {
-        const response = await fetch(`${API_BASE}/admin/all`, {
-            headers: {
-                'Authorization': localStorage.getItem('token') || '',
-                'Content-Type': 'application/json'
-            }
-        });
-        if (!response.ok) throw new Error('Không thể tải danh sách đơn hàng');
-        return response.json();
+    // 9. Admin: Lấy danh sách đơn hàng
+    async adminGetOrders(adminId: number, status?: string): Promise<Order[]> {
+    let url = `http://localhost:3000/api/admin/orders?admin_id=${adminId}`;
+    if (status) url += `&status=${status}`;
+
+    const token = localStorage.getItem('token');
+
+    const res = await fetch(url, {
+        headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+        }
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        console.error('Admin orders API error:', text);
+        throw new Error('Không thể tải đơn hàng (Admin)');
+    }
+
+    return await res.json();
     },
 
-    adminCancelOrder: async (orderId: number) => {
-        const response = await fetch(`${API_BASE}/admin/cancel/${orderId}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': localStorage.getItem('token') || '',
-                'Content-Type': 'application/json'
-            }
-        });
-        if (!response.ok) throw new Error('Hủy đơn thất bại');
-        return response.json();
-    }
+    // 10. Admin: Xem chi tiết đơn hàng
+    async adminGetOrderDetail(
+    adminId: number,
+    orderId: number
+    ): Promise<{
+    order: AdminOrderDetail;
+    items: OrderItem[];
+    }> {
+    const res = await fetch(
+        `http://localhost:3000/api/admin/orders/${orderId}?admin_id=${adminId}`
+    );
+
+    const contentType = res.headers.get('content-type');
+        if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Không thể lấy chi tiết đơn hàng: ${text}`);
+        }
+        if (contentType && contentType.includes('application/json')) {
+        return await res.json();
+        } else {
+        const text = await res.text();
+        throw new Error(`Response không phải JSON: ${text}`);
+        }
+    },
+
+    // 11. Admin: Hủy đơn hàng
+    async adminCancelOrder(
+    adminId: number,
+    orderId: number
+    ): Promise<{ message: string }> {
+    const res = await fetch(
+        `http://localhost:3000/api/admin/orders/${orderId}/cancel`,
+        {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: adminId })
+        }
+    );
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Admin hủy đơn thất bại');
+
+    return result;
+    },
+
+    // 12. Admin: Hủy 1 sản phẩm trong đơn
+    async adminCancelOrderItem(
+    adminId: number,
+    orderItemId: number
+    ): Promise<{ message: string }> {
+    const res = await fetch(
+        `http://localhost:3000/api/admin/order-items/${orderItemId}/cancel`,
+        {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: adminId })
+        }
+    );
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Không thể hủy sản phẩm');
+
+    return result;
+    },
+
+    // 13. Admin: Thống kê đơn hàng
+    async adminStatistics(adminId: number): Promise<{
+    total_orders: number;
+    success_orders: number;
+    cancelled_orders: number;
+    revenue: number;
+    }> {
+    const res = await fetch(
+        `http://localhost:3000/api/admin/orders/statistics?admin_id=${adminId}`
+    );
+
+    if (!res.ok) throw new Error('Không thể lấy thống kê đơn hàng');
+    return await res.json();
+    },
+
+
+
 };

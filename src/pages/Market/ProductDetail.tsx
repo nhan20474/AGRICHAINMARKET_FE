@@ -11,6 +11,8 @@ import { reviewService, Review } from '../../services/reviewService';
 import { orderService } from '../../services/orderService';
 import { blockchainService } from '../../services/blockchainService';
 import '../../styles/ProductDetail.css';
+import { flyToCart } from '../../utils/cartAnimation';
+
 
 // --- CẤU HÌNH URL SERVER ĐỂ LẤY ẢNH ---
 const API_BASE_URL = 'http://localhost:3000'; 
@@ -100,8 +102,23 @@ const ProductDetail: React.FC = () => {
             // 1. Lấy sản phẩm
             const allProducts = await productService.getAll();
             const found = allProducts.find((p: any) => p.id === productId);
-            setProduct(found || allProducts[0]);
-            setRelatedProducts(allProducts.filter(p => p.id !== productId).slice(0, 4));
+            if (!found) {
+                console.error('❌ Không tìm thấy sản phẩm');
+                setProduct(null);
+                setRelatedProducts([]);
+                return;
+            }
+            setProduct(found);
+            setRelatedProducts(
+                allProducts
+                    .filter(p =>
+                        p.id !== productId &&
+                        p.status === 'available' &&
+                        p.category_id === found.category_id
+                    )
+                    .slice(0, 4)
+            );
+
 
             // ✅ CẬP NHẬT: Lấy gallery images từ product_images hoặc extra_images
             if (found && found.id) {
@@ -251,8 +268,31 @@ const ProductDetail: React.FC = () => {
             }, 100);
             
             alert("Đã thêm vào giỏ hàng!");
-        } catch { 
-            alert("Lỗi thêm giỏ hàng"); 
+        } catch (error: any) {
+            console.error("❌ Add to cart error:", error);
+
+            const message = error?.message || "";
+
+            // 🔴 Lỗi tồn kho
+            if (message.includes("Kho chỉ còn")) {
+                alert(`⚠️ ${message}`);
+                return;
+            }
+
+            // 🔴 Hết hàng
+            if (message.includes("hết hàng")) {
+                alert("❌ Sản phẩm đã hết hàng");
+                return;
+            }
+
+            // 🔴 Sản phẩm tạm ngừng bán
+            if (message.includes("tạm ngừng")) {
+                alert(`⚠️ ${message}`);
+                return;
+            }
+
+            // 🔴 Lỗi khác
+            alert("❌ Không thể thêm vào giỏ hàng");
         }
     };
 
