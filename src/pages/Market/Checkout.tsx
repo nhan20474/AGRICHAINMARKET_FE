@@ -153,9 +153,20 @@ const CheckoutPage: React.FC = () => {
 
             const orderData = await orderRes.json();
 
+            // Robust extraction of order id from various backend shapes
+            const orderIdRaw =
+                orderData?.order_id ??
+                orderData?.id ??
+                orderData?.order?.id ??
+                orderData?.orderId ??
+                orderData?.data?.order_id ??
+                null;
+            const orderId = orderIdRaw != null ? Number(orderIdRaw) : NaN;
+            if (!orderId || isNaN(orderId)) {
+                throw new Error('Backend không trả về order_id hợp lệ');
+            }
+
             if (orderRes.ok) {
-                const orderId = orderData.order_id;
-                
                 // Gọi API xác nhận thanh toán
                 await fetch('http://localhost:3000/api/payments/demo/confirm-payment', {
                     method: 'POST',
@@ -241,6 +252,77 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
+    // ✅ THÊM: Hàm tạo payment VNPay (giống MoMo)
+    const createVnPayPayment = async (orderId: number, totalAmount: number) => {
+        // input validation
+        if (!orderId || isNaN(Number(orderId))) {
+            alert('❌ orderId không hợp lệ!');
+            setIsSubmitting(false);
+            return;
+        }
+        if (isNaN(totalAmount) || totalAmount < 1000 || totalAmount > 50000000) {
+            alert('❌ Số tiền thanh toán không hợp lệ!');
+            setIsSubmitting(false);
+            return;
+        }
+
+        console.log('Gửi VNPay:', { orderId, totalAmount });
+
+        try {
+            const res = await fetch('http://localhost:3000/api/payments/vnpay/create-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: Number(orderId), total_amount: Math.round(Number(totalAmount)) })
+            });
+
+            let data: any = null;
+            try { data = await res.json(); } catch (e) { data = null; }
+
+            // Handle HTTP errors
+            if (!res.ok) {
+                console.error('VNPay API trả lỗi:', data);
+                throw new Error((data && (data.error || data.message)) ? (data.error || data.message) : `HTTP ${res.status}`);
+            }
+
+            // Standard success with redirect URL
+            if (data && (data.success || data.payUrl)) {
+                const payUrl = data.payUrl || data.paymentUrl || data.url || data.redirectUrl;
+                if (payUrl) {
+                    sessionStorage.setItem('pending_payment_order', String(orderId));
+                    if (data.txnRef) sessionStorage.setItem('pending_txnRef', String(data.txnRef));
+                    sessionStorage.setItem('pending_payment_amount', String(Math.round(Number(totalAmount))));
+                    window.location.href = payUrl;
+                    return;
+                }
+            }
+
+            // If backend returned QR
+            if (data && data.qrCodeUrl) {
+                setCurrentOrderId(orderId);
+                setQrImage(data.qrCodeUrl);
+                setShowQrModal(true);
+                sessionStorage.setItem('pending_payment_order', String(orderId));
+                sessionStorage.setItem('pending_payment_amount', String(Math.round(Number(totalAmount))));
+                return;
+            }
+
+            // If response contains raw URL field
+            const possibleUrl = data && (data.payUrl || data.paymentUrl || data.url || data.redirectUrl || (data.data && data.data.url));
+            if (possibleUrl) {
+                sessionStorage.setItem('pending_payment_order', String(orderId));
+                sessionStorage.setItem('pending_payment_amount', String(Math.round(Number(totalAmount))));
+                window.location.href = possibleUrl;
+                return;
+            }
+
+            throw new Error((data && (data.error || data.message)) ? (data.error || data.message) : 'Không nhận được URL thanh toán từ VNPay');
+        } catch (err: any) {
+            console.error('❌ createVnPayPayment error:', err);
+            alert(`❌ Lỗi kết nối VNPay: ${err?.message || err}`);
+            setIsSubmitting(false);
+        }
+    };
+
     // ✅ CẬP NHẬT: Hàm handleSubmit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -279,8 +361,16 @@ const CheckoutPage: React.FC = () => {
             }
 
             const orderData = await orderRes.json();
-            const orderId = orderData.order_id;
-            if (!orderId || isNaN(Number(orderId))) {
+            // Robust extraction of order id from various backend shapes
+            const orderIdRaw =
+                orderData?.order_id ??
+                orderData?.id ??
+                orderData?.order?.id ??
+                orderData?.orderId ??
+                orderData?.data?.order_id ??
+                null;
+            const orderId = orderIdRaw != null ? Number(orderIdRaw) : NaN;
+            if (!orderId || isNaN(orderId)) {
                 throw new Error('Backend không trả về order_id hợp lệ');
             }
 
@@ -308,9 +398,8 @@ const CheckoutPage: React.FC = () => {
                 // Chỉ truyền orderId đầu tiên và số tiền tổng cộng (finalAmount)
                 await createMomoPayment(orderId, finalAmount);
             } else if (paymentMethod === 'vnpay' || paymentMethod === 'zalopay') {
-                sessionStorage.setItem('pendingOrder', JSON.stringify({ order_id: orderId }));
-                setShowQrModal(true);
-                setQrImage(`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=DEMO_ORDER_${orderId}`);
+                // Gọi API tạo payment VNPay (hoặc Zalopay tương tự)
+                await createVnPayPayment(orderId, finalAmount);
             }
         } catch (err: any) {
             setError(`❌ ${err.message || 'Lỗi kết nối server'}`);

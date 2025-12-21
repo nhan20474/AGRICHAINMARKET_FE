@@ -10,75 +10,126 @@ const PaymentResult = () => {
 
   useEffect(() => {
     const verifyPayment = async () => {
-      const isSuccessRoute = location.pathname.includes('success');
-      
-      // MoMo trả về orderId trong URL params
+      // Support both MoMo and VNPay callbacks.
+      // VNPay returns query params like vnp_ResponseCode, vnp_TxnRef, vnp_OrderInfo
+      const vnpResponse = searchParams.get('vnp_ResponseCode');
+      const vnpTxnRef = searchParams.get('vnp_TxnRef');
+      const vnpOrderInfo = searchParams.get('vnp_OrderInfo');
+
+      // MoMo params
       const momoOrderId = searchParams.get('orderId');
       const resultCode = searchParams.get('resultCode');
-      const extraData = searchParams.get('extraData');
+      const orderInfo = searchParams.get('orderInfo') || vnpOrderInfo;
 
-      // Parse order_id từ orderInfo (format: "Thanh toán đơn hàng #36")
-      const orderInfo = searchParams.get('orderInfo');
+      // Try to parse order_id from orderInfo like "Thanh toan don hang #123" or "Thanh toán đơn hàng #123"
       const orderIdMatch = orderInfo?.match(/#(\d+)/);
-      const realOrderId = orderIdMatch ? orderIdMatch[1] : null;
+      let realOrderId = orderIdMatch ? orderIdMatch[1] : (momoOrderId || null);
 
-      console.log('🔍 Payment callback params:', { 
-        momoOrderId, 
-        resultCode, 
-        orderInfo, 
-        realOrderId, 
-        isSuccessRoute 
+      // Fallback: check sessionStorage (FE saved pending order before redirect)
+      if (!realOrderId) {
+        const pending = sessionStorage.getItem('pending_payment_order') || sessionStorage.getItem('pendingOrder');
+        if (pending) {
+          try {
+            const parsed = pending.startsWith('{') ? JSON.parse(pending) : { order_id: pending };
+            realOrderId = parsed.order_id ? String(parsed.order_id) : (parsed || null);
+          } catch (e) {
+            realOrderId = pending;
+          }
+        }
+      }
+
+      console.log('🔍 Payment callback params:', {
+        vnpResponse, vnpTxnRef, vnpOrderInfo, momoOrderId, resultCode, orderInfo, realOrderId
       });
 
       if (!realOrderId) {
         setStatus('failed');
-        setMessage('Không tìm thấy mã đơn hàng');
+        setMessage('Không tìm thấy mã đơn hàng. Vui lòng kiểm tra Lịch sử đơn hàng hoặc liên hệ hỗ trợ.');
         return;
       }
 
-      // Nếu resultCode != 0 thì thanh toán thất bại
-      if (resultCode !== '0') {
+      // If MoMo and resultCode indicates failure
+      if (resultCode && resultCode !== '0') {
         setStatus('failed');
         setMessage('Thanh toán đã bị hủy hoặc thất bại');
         return;
       }
 
+      // For VNPay we will poll status endpoint, for MoMo we call verify endpoint
       try {
-        // Gọi API verify thanh toán - chỉ gửi order_id
-        const response = await fetch('http://localhost:3000/api/payments/momo/verify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            order_id: parseInt(realOrderId) // Chỉ gửi order_id
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('❌ API Error:', errorData);
-          
-          // Nếu 404 và đã paid, có thể là payment đã xử lý
-          if (response.status === 404 && errorData.isPaid === false) {
-            throw new Error('Không tìm thấy thông tin thanh toán. Vui lòng liên hệ hỗ trợ.');
+        if (vnpResponse || searchParams.get('code')) {
+          // If VNPay returned an error page (e.g. code=70) we still attempt polling using stored orderId
+          const codeParam = searchParams.get('code');
+          if (codeParam) {
+            console.warn('VNPay returned error code:', codeParam);
+            setMessage(`VNPay trả về lỗi (code=${codeParam}). Đang kiểm tra trạng thái đơn hàng...`);
           }
-          
-          throw new Error(`HTTP ${response.status}: ${errorData.error || 'Unknown error'}`);
-        }
 
-        const data = await response.json();
-        console.log('✅ Verify response:', data);
+          // VNPay flow: start polling status until paid/failed
+          let attempts = 0;
+          const maxAttempts = 20;
+          const interval = 3000;
 
-        if (data.success && data.isPaid) {
-          setStatus('success');
-          setMessage('Thanh toán thành công! Đơn hàng của bạn đã được xác nhận.');
-        } else if (data.payment_status === 'pending') {
-          setStatus('pending');
-          setMessage('Giao dịch đang được xử lý. Vui lòng kiểm tra lại sau.');
+          const poll = async () => {
+            attempts++;
+            try {
+              const resp = await fetch(`http://localhost:3000/api/payments/status/${realOrderId}`);
+              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+              const j = await resp.json();
+              if (j.payment_status === 'paid') {
+                setStatus('success');
+                setMessage('Thanh toán thành công! Đơn hàng đã được xác nhận.');
+                // cleanup pending keys
+                sessionStorage.removeItem('pending_payment_order');
+                sessionStorage.removeItem('pendingOrder');
+                return;
+              }
+              if (j.payment_status === 'failed') {
+                setStatus('failed');
+                setMessage('Thanh toán thất bại.');
+                sessionStorage.removeItem('pending_payment_order');
+                sessionStorage.removeItem('pendingOrder');
+                return;
+              }
+              if (attempts < maxAttempts) {
+                setTimeout(poll, interval);
+              } else {
+                setStatus('pending');
+                setMessage('Giao dịch đang được xử lý. Vui lòng kiểm tra lại sau.');
+              }
+            } catch (err) {
+              console.error('Polling error:', err);
+              if (attempts < maxAttempts) setTimeout(poll, interval);
+              else {
+                setStatus('pending');
+                setMessage('Không thể xác thực ngay lúc này. Vui lòng kiểm tra Lịch sử đơn hàng sau vài phút.');
+              }
+            }
+          };
+          poll();
         } else {
-          setStatus('failed');
-          setMessage(data.message || 'Thanh toán thất bại');
+          // MoMo verify
+          const response = await fetch('http://localhost:3000/api/payments/momo/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: parseInt(realOrderId) })
+          });
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ API Error:', errorData);
+            throw new Error(`HTTP ${response.status}: ${errorData.error || 'Unknown error'}`);
+          }
+          const data = await response.json();
+          if (data.success && data.isPaid) {
+            setStatus('success');
+            setMessage('Thanh toán thành công! Đơn hàng của bạn đã được xác nhận.');
+          } else if (data.payment_status === 'pending') {
+            setStatus('pending');
+            setMessage('Giao dịch đang được xử lý. Vui lòng kiểm tra lại sau.');
+          } else {
+            setStatus('failed');
+            setMessage(data.message || 'Thanh toán thất bại');
+          }
         }
       } catch (error) {
         console.error('Verify payment error:', error);
