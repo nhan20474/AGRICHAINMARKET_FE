@@ -26,6 +26,9 @@ interface Stats {
     totalRevenue: number;
     pendingOrders: number;
     activeProducts: number;
+    completedOrders?: number;
+    cancelledOrders?: number;
+    lowStockProducts?: number;
 }
 
 interface Order { 
@@ -37,22 +40,18 @@ interface Order {
 }
 
 const initialStats: Stats = {
-    totalUsers: 245,
-    totalFarmers: 112,
-    totalConsumers: 133,
-    totalProducts: 320,
-    totalOrders: 2340,
-    totalRevenue: 125000000, 
-    pendingOrders: 12,
-    activeProducts: 300
+    totalUsers: 0,
+    totalFarmers: 0,
+    totalConsumers: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    activeProducts: 0,
+    completedOrders: 0,
+    cancelledOrders: 0,
+    lowStockProducts: 0,
 };
-
-const initialRecentOrders: Order[] = [
-    { id: 'ORD001', customer: 'Nguyễn Văn A', total: 350000, status: 'pending', date: '2025-07-15' },
-    { id: 'ORD002', customer: 'Trần Thị B', total: 520000, status: 'completed', date: '2025-07-15' },
-    { id: 'ORD003', customer: 'Lê Văn C', total: 180000, status: 'shipping', date: '2025-07-14' },
-    { id: 'ORD004', customer: 'Phạm Thị D', total: 95000, status: 'completed', date: '2025-07-14' },
-];
 
 const formatCurrency = (amount: number) => amount.toLocaleString('vi-VN') + 'đ';
 
@@ -71,9 +70,31 @@ const menuItems = [
 export default function AdminDashboard() {
     const [activeMenu, setActiveMenu] = useState('dashboard');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [stats] = useState<Stats>(initialStats);
-    const [recentOrders] = useState<Order[]>(initialRecentOrders);
+    const [stats, setStats] = useState<Stats>(initialStats);
+    const [recentOrders, setRecentOrders] = useState<Order[]>([]);
     const navigate = useNavigate();
+
+    // Fetch dashboard stats from API
+    useEffect(() => {
+        fetch('http://localhost:3000/api/reports/admin/dashboard')
+            .then(res => res.json())
+            .then(data => {
+                setStats({
+                    totalUsers: data.total_users,
+                    totalFarmers: data.total_sellers,
+                    totalConsumers: data.total_buyers,
+                    totalProducts: data.total_products,
+                    totalOrders: data.total_orders,
+                    totalRevenue: data.total_revenue,
+                    pendingOrders: data.pending_orders,
+                    activeProducts: data.total_products - (data.low_stock_products || 0),
+                    completedOrders: data.completed_orders,
+                    cancelledOrders: data.cancelled_orders,
+                    lowStockProducts: data.low_stock_products,
+                });
+            })
+            .catch(() => {});
+    }, []);
 
     const renderMainContent = () => {
         if (activeMenu === 'users_list') return <UserManager />;
@@ -126,8 +147,12 @@ export default function AdminDashboard() {
                     <div className="chart-card">
                         <h3>Trạng thái đơn hàng</h3>
                         <div className="chart-placeholder">
-                            <TrendingUp size={40} />
-                            <p>Biểu đồ tròn</p>
+                            {/* Show order status summary */}
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                <li>Hoàn thành: {stats.completedOrders}</li>
+                                <li>Đã huỷ: {stats.cancelledOrders}</li>
+                                <li>Chờ xử lý: {stats.pendingOrders}</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -296,20 +321,26 @@ const RecentOrdersTable: React.FC<{ orders: Order[] }> = ({ orders }) => (
                 </tr>
             </thead>
             <tbody>
-                {orders.map(order => (
-                    <tr key={order.id}>
-                        <td className="bold">{order.id}</td>
-                        <td>{order.customer}</td>
-                        <td>{formatCurrency(order.total)}</td>
-                        <td>
-                            <span className={`status-badge ${order.status}`}>
-                                {order.status === 'pending' ? 'Chờ xử lý' :
-                                 order.status === 'shipping' ? 'Đang giao' : 'Hoàn thành'}
-                            </span>
-                        </td>
-                        <td>{order.date}</td>
+                {orders.length === 0 ? (
+                    <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: '#888', padding: 24 }}>Không có dữ liệu</td>
                     </tr>
-                ))}
+                ) : (
+                    orders.map(order => (
+                        <tr key={order.id}>
+                            <td className="bold">{order.id}</td>
+                            <td>{order.customer}</td>
+                            <td>{formatCurrency(order.total)}</td>
+                            <td>
+                                <span className={`status-badge ${order.status}`}>
+                                    {order.status === 'pending' ? 'Chờ xử lý' :
+                                    order.status === 'shipping' ? 'Đang giao' : 'Hoàn thành'}
+                                </span>
+                            </td>
+                            <td>{order.date}</td>
+                        </tr>
+                    ))
+                )}
             </tbody>
         </table>
     </div>

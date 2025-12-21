@@ -19,6 +19,8 @@ interface Order {
     status: string;
     shipping_address?: string;
     items: OrderItem[];
+    discount_amount?: number; // tổng số tiền giảm giá
+    original_amount?: number; // tổng tiền gốc trước giảm giá
 }
 
 function getUserId() {
@@ -59,7 +61,6 @@ const OrderHistory: React.FC = () => {
                 data.forEach((row: any) => {
                     const orderId = row.order?.id;
                     if (!orderId) return;
-                    
                     if (!ordersMap.has(orderId)) {
                         ordersMap.set(orderId, {
                             id: orderId,
@@ -67,10 +68,11 @@ const OrderHistory: React.FC = () => {
                             total_amount: row.order?.total_amount,
                             status: row.order?.status,
                             shipping_address: row.order?.shipping_address,
-                            items: []
+                            items: [],
+                            discount_amount: row.order?.discount_amount || 0,
+                            original_amount: row.order?.original_amount || null
                         });
                     }
-                    
                     const order = ordersMap.get(orderId)!;
                     if (Array.isArray(row.items)) {
                         row.items.forEach((item: any) => {
@@ -291,7 +293,16 @@ const OrderHistory: React.FC = () => {
                                         <div style={{flex: 1, marginLeft: 12}}>
                                             <strong style={{ fontSize: 15, color: '#333' }}>{item.name}</strong>
                                             <div style={{ fontSize: 14, color: '#666', marginTop: 4 }}>
-                                                Số lượng: <strong>{item.quantity}</strong> × {Number(item.price_per_item).toLocaleString('vi-VN')}đ
+                                                Số lượng: <strong>{item.quantity}</strong> × {
+                                                    (() => {
+                                                        // DEBUG: log giá trị để kiểm tra
+                                                        // console.log('item.price_per_item', item.price_per_item, typeof item.price_per_item);
+                                                        const n = typeof item.price_per_item === 'number'
+                                                            ? item.price_per_item
+                                                            : parseFloat(item.price_per_item || '0');
+                                                        return n.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                                                    })()
+                                                }đ
                                             </div>
                                         </div>
                                         
@@ -478,6 +489,20 @@ const OrderHistory: React.FC = () => {
                                     
                                     {/* Tổng tiền */}
                                     <div style={{textAlign: 'right'}}>
+                                        {/* Hiển thị tổng tiền gốc nếu có giảm giá */}
+                                        {order.discount_amount && Number(order.discount_amount) > 0 ? (
+                                            <>
+                                                <div style={{fontSize: 15, color: '#888', textDecoration: 'line-through'}}>
+                                                    Tổng tiền hàng: {order.original_amount && Number(order.original_amount) > 0
+                                                        ? Number(order.original_amount).toLocaleString('vi-VN')
+                                                        : (Number(order.total_amount) + Number(order.discount_amount)).toLocaleString('vi-VN')
+                                                    }đ
+                                                </div>
+                                                <div style={{fontSize: 15, color: '#4caf50'}}>
+                                                    Giảm giá: -{Number(order.discount_amount).toLocaleString('vi-VN')}đ
+                                                </div>
+                                            </>
+                                        ) : null}
                                         <span style={{fontSize: 16, color: '#666'}}>Tổng cộng: </span>
                                         <strong style={{fontSize: 20, color: '#38b000'}}>
                                             {Number(order.total_amount).toLocaleString('vi-VN')}đ

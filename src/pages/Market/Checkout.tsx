@@ -190,26 +190,51 @@ const CheckoutPage: React.FC = () => {
 
     // ✅ ĐẢM BẢO: Khi thanh toán MoMo, chỉ cần truyền đúng số tiền tổng cộng (finalAmount) và orderId đầu tiên (test/demo)
     const createMomoPayment = async (orderId: number, totalAmount: number) => {
+        // Kiểm tra dữ liệu đầu vào
+        if (!orderId || isNaN(Number(orderId))) {
+            alert('❌ orderId không hợp lệ!');
+            setIsSubmitting(false);
+            return;
+        }
+        if (isNaN(totalAmount) || totalAmount < 1000 || totalAmount > 50000000) {
+            alert('❌ Số tiền thanh toán không hợp lệ!');
+            setIsSubmitting(false);
+            return;
+        }
+        // Log giá trị truyền đi để debug
+        console.log('Gửi MoMo:', { orderId, totalAmount, type_orderId: typeof orderId, type_totalAmount: typeof totalAmount });
         try {
             const res = await fetch('http://localhost:3000/api/payments/momo/create-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order_id: orderId, total_amount: totalAmount })
+                body: JSON.stringify({ 
+                    order_id: Number(orderId), 
+                    total_amount: Math.round(Number(totalAmount)) 
+                })
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            if (data.success && data.payUrl) {
+            let data = null;
+            try {
+                data = await res.json();
+            } catch (jsonErr) {
+                console.error('Lỗi parse JSON MoMo:', jsonErr);
+            }
+            if (!res.ok) {
+                // Log chi tiết lỗi trả về từ backend
+                console.error('MoMo API trả về lỗi:', data);
+                throw new Error((data && data.error) ? data.error : `HTTP ${res.status}`);
+            }
+            if (data && data.success && data.payUrl) {
                 sessionStorage.setItem('pending_payment_order', orderId.toString());
                 window.location.href = data.payUrl;
                 return;
             }
-            if (data.qrCodeUrl) {
+            if (data && data.qrCodeUrl) {
                 setCurrentOrderId(orderId);
                 setQrImage(data.qrCodeUrl);
                 setShowQrModal(true);
                 return;
             }
-            throw new Error(data.error || 'Không nhận được URL thanh toán từ MoMo');
+            throw new Error((data && data.error) ? data.error : 'Không nhận được URL thanh toán từ MoMo');
         } catch (err: any) {
             alert(`❌ Lỗi kết nối MoMo: ${err.message}`);
             setIsSubmitting(false);
@@ -269,6 +294,17 @@ const CheckoutPage: React.FC = () => {
                 localStorage.removeItem('cart');
                 window.dispatchEvent(new Event('cart-updated'));
             } else if (paymentMethod === 'momo') {
+                // Kiểm tra dữ liệu trước khi gọi MoMo
+                if (!orderId || isNaN(Number(orderId))) {
+                    alert('❌ orderId không hợp lệ!');
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (isNaN(finalAmount) || finalAmount < 1000 || finalAmount > 50000000) {
+                    alert('❌ Số tiền thanh toán không hợp lệ!');
+                    setIsSubmitting(false);
+                    return;
+                }
                 // Chỉ truyền orderId đầu tiên và số tiền tổng cộng (finalAmount)
                 await createMomoPayment(orderId, finalAmount);
             } else if (paymentMethod === 'vnpay' || paymentMethod === 'zalopay') {
