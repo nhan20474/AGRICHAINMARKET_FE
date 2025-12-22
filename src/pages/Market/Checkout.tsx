@@ -29,7 +29,7 @@ const CheckoutPage: React.FC = () => {
     // -----------------------------
     
     // ✅ THÊM: State cho payment method
-    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'momo' | 'vnpay' | 'zalopay'>('cod');
+    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'momo' | 'vnpay'>('cod');
     
     // ✅ THÊM: State cho QR modal
     const [showQrModal, setShowQrModal] = useState(false);
@@ -86,6 +86,31 @@ const CheckoutPage: React.FC = () => {
                 setLoading(false);
             });
     }, [userId]);
+
+    // Listen for messages from payment popup (postMessage) to update UI in-place
+    useEffect(() => {
+        const handler = (ev: MessageEvent) => {
+            try {
+                if (!ev.data || ev.origin !== window.location.origin) return;
+                const { type, status, orderId } = ev.data as any;
+                if (type !== 'payment_result') return;
+                if (status === 'success') {
+                    setSuccess(`✅ Thanh toán thành công cho đơn #${orderId}`);
+                    setCartItems([]);
+                    localStorage.removeItem('cart');
+                    sessionStorage.removeItem('pending_payment_order');
+                    sessionStorage.removeItem('pending_payment_amount');
+                    window.dispatchEvent(new Event('cart-updated'));
+                } else if (status === 'failed') {
+                    setError(`❌ Thanh toán thất bại cho đơn #${orderId}.`);
+                } else if (status === 'pending') {
+                    setError(`⏳ Thanh toán đang xử lý cho đơn #${orderId}. Vui lòng kiểm tra Lịch sử đơn hàng.`);
+                }
+            } catch (e) { console.error('payment message handler error', e); }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, []);
 
     const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
@@ -236,7 +261,14 @@ const CheckoutPage: React.FC = () => {
             }
             if (data && data.success && data.payUrl) {
                 sessionStorage.setItem('pending_payment_order', orderId.toString());
-                window.location.href = data.payUrl;
+                const newWin = window.open(data.payUrl, '_blank');
+                if (newWin) {
+                    try { newWin.focus(); } catch {}
+                    alert('Thanh toán đã mở ở tab mới. Sau khi hoàn tất, đóng tab và quay lại trang này để kiểm tra trạng thái đơn hàng.');
+                } else {
+                    // Popup blocked -> perform full redirect
+                    window.location.href = data.payUrl;
+                }
                 return;
             }
             if (data && data.qrCodeUrl) {
@@ -291,7 +323,57 @@ const CheckoutPage: React.FC = () => {
                     sessionStorage.setItem('pending_payment_order', String(orderId));
                     if (data.txnRef) sessionStorage.setItem('pending_txnRef', String(data.txnRef));
                     sessionStorage.setItem('pending_payment_amount', String(Math.round(Number(totalAmount))));
-                    window.location.href = payUrl;
+                    const newWin = window.open(payUrl, '_blank');
+                    if (newWin) {
+                        try { newWin.focus(); } catch {}
+                        alert('Thanh toán đã mở ở tab mới. Sau khi hoàn tất, đóng tab và quay lại trang này để kiểm tra trạng thái đơn hàng.');
+
+                        // Start background polling to detect payment status even if the payment page
+                        // shows raw JSON or doesn't postMessage back. This updates the current UI.
+                        (async () => {
+                            const timeoutMs = 2 * 60 * 1000; // 2 minutes
+                            const interval = 3000;
+                            const start = Date.now();
+                            try {
+                                while (Date.now() - start < timeoutMs) {
+                                    try {
+                                        const r = await fetch(`http://localhost:3000/api/payments/status/${orderId}`);
+                                        if (r.ok) {
+                                            const jr = await r.json().catch(() => null);
+                                            if (jr) {
+                                                if (jr.isPaid || jr.payment_status === 'paid') {
+                                                    setSuccess(`✅ Thanh toán thành công cho đơn #${orderId}`);
+                                                    sessionStorage.removeItem('pending_payment_order');
+                                                    sessionStorage.removeItem('pending_payment_amount');
+                                                    sessionStorage.removeItem('pending_txnRef');
+                                                    setCartItems([]); localStorage.removeItem('cart'); window.dispatchEvent(new Event('cart-updated'));
+                                                    try { newWin.close(); } catch {}
+                                                    return;
+                                                }
+                                                if (jr.payment_status === 'failed') {
+                                                    setError(`❌ Thanh toán đơn #${orderId} thất bại.`);
+                                                    sessionStorage.removeItem('pending_payment_order');
+                                                    sessionStorage.removeItem('pending_payment_amount');
+                                                    try { newWin.close(); } catch {}
+                                                    return;
+                                                }
+                                            }
+                                        }
+                                    } catch (e) { /* ignore and retry */ }
+                                    await new Promise(res => setTimeout(res, interval));
+                                }
+                                // timeout
+                                setError('Giao dịch đang được xử lý. Vui lòng kiểm tra Lịch sử đơn hàng sau vài phút.');
+                            } catch (e) {
+                                console.error('Background payment poller error', e);
+                            } finally {
+                                setIsSubmitting(false);
+                            }
+                        })();
+
+                    } else {
+                        window.location.href = payUrl;
+                    }
                     return;
                 }
             }
@@ -311,7 +393,13 @@ const CheckoutPage: React.FC = () => {
             if (possibleUrl) {
                 sessionStorage.setItem('pending_payment_order', String(orderId));
                 sessionStorage.setItem('pending_payment_amount', String(Math.round(Number(totalAmount))));
-                window.location.href = possibleUrl;
+                const newWin = window.open(possibleUrl, '_blank');
+                if (newWin) {
+                    try { newWin.focus(); } catch {}
+                    alert('Thanh toán đã mở ở tab mới. Sau khi hoàn tất, đóng tab và quay lại trang này để kiểm tra trạng thái đơn hàng.');
+                } else {
+                    window.location.href = possibleUrl;
+                }
                 return;
             }
 
@@ -397,8 +485,8 @@ const CheckoutPage: React.FC = () => {
                 }
                 // Chỉ truyền orderId đầu tiên và số tiền tổng cộng (finalAmount)
                 await createMomoPayment(orderId, finalAmount);
-            } else if (paymentMethod === 'vnpay' || paymentMethod === 'zalopay') {
-                // Gọi API tạo payment VNPay (hoặc Zalopay tương tự)
+            } else if (paymentMethod === 'vnpay') {
+                // Gọi API tạo payment VNPay
                 await createVnPayPayment(orderId, finalAmount);
             }
         } catch (err: any) {
@@ -1119,21 +1207,7 @@ const CheckoutPage: React.FC = () => {
                                     <span style={{ fontWeight: 600 }}>🏦 VNPay</span>
                                 </label>
 
-                                {/* ZaloPay */}
-                                <label style={{
-                                    display: 'flex', alignItems: 'center', gap: 10, padding: 12,
-                                    border: `2px solid ${paymentMethod === 'zalopay' ? '#0068FF' : '#ddd'}`,
-                                    borderRadius: 8, cursor: 'pointer', background: paymentMethod === 'zalopay' ? '#e6f0ff' : '#fff'
-                                }}>
-                                    <input 
-                                        type="radio" 
-                                        name="payment_method" 
-                                        value="zalopay" 
-                                        checked={paymentMethod === 'zalopay'} 
-                                        onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                    />
-                                    <span style={{ fontWeight: 600 }}>⚡ ZaloPay</span>
-                                </label>
+                                {/* ZaloPay removed */}
                             </div>
                         </div>
 
@@ -1255,7 +1329,7 @@ const CheckoutPage: React.FC = () => {
                         <h3 style={{ marginTop: 0, fontSize: 20, color: '#333' }}>
                             {paymentMethod === 'momo' && '📱 Quét mã MoMo'}
                             {paymentMethod === 'vnpay' && '🏦 Quét mã VNPay'}
-                            {paymentMethod === 'zalopay' && '⚡ Quét mã ZaloPay'}
+                            {/* ZaloPay removed */}
                         </h3>
                         
                         <p style={{ color: '#666', fontSize: 14, marginBottom: 20 }}>

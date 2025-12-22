@@ -7,6 +7,7 @@ const PaymentResult = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('processing');
   const [message, setMessage] = useState('Đang xác thực thanh toán...');
+  const [resolvedOrderId, setResolvedOrderId] = useState(null);
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -79,6 +80,7 @@ const PaymentResult = () => {
               if (j.payment_status === 'paid') {
                 setStatus('success');
                 setMessage('Thanh toán thành công! Đơn hàng đã được xác nhận.');
+                setResolvedOrderId(realOrderId);
                 // cleanup pending keys
                 sessionStorage.removeItem('pending_payment_order');
                 sessionStorage.removeItem('pendingOrder');
@@ -87,6 +89,7 @@ const PaymentResult = () => {
               if (j.payment_status === 'failed') {
                 setStatus('failed');
                 setMessage('Thanh toán thất bại.');
+                setResolvedOrderId(realOrderId);
                 sessionStorage.removeItem('pending_payment_order');
                 sessionStorage.removeItem('pendingOrder');
                 return;
@@ -123,12 +126,14 @@ const PaymentResult = () => {
           if (data.success && data.isPaid) {
             setStatus('success');
             setMessage('Thanh toán thành công! Đơn hàng của bạn đã được xác nhận.');
+            setResolvedOrderId(realOrderId);
           } else if (data.payment_status === 'pending') {
             setStatus('pending');
             setMessage('Giao dịch đang được xử lý. Vui lòng kiểm tra lại sau.');
           } else {
             setStatus('failed');
             setMessage(data.message || 'Thanh toán thất bại');
+            setResolvedOrderId(realOrderId);
           }
         }
       } catch (error) {
@@ -140,6 +145,23 @@ const PaymentResult = () => {
 
     verifyPayment();
   }, [location, searchParams]);
+
+  // When status resolves, notify opener window (if any) so popup can communicate result
+  useEffect(() => {
+    if (!resolvedOrderId) return;
+    const payload = { type: 'payment_result', status, orderId: resolvedOrderId };
+    try {
+      if (window.opener && window.opener.postMessage) {
+        window.opener.postMessage(payload, window.location.origin);
+        // close popup after short delay
+        setTimeout(() => {
+          try { window.close(); } catch (e) {}
+        }, 1200);
+      }
+    } catch (e) {
+      console.warn('PostMessage to opener failed', e);
+    }
+  }, [resolvedOrderId, status]);
 
   const getStatusIcon = () => {
     switch (status) {
