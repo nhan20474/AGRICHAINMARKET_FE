@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { chatbotService } from '../services/chatbotService';
 import '../styles/ChatWidget.css';
 
+/* ===================== TYPES ===================== */
 type Message = {
   id: number;
   text: string;
@@ -9,142 +10,115 @@ type Message = {
   timestamp: Date;
 };
 
-function getUserId() {
+/* ===================== GET USER / GUEST ID ===================== */
+function getUserId(): number | 'guest' {
   try {
     const s = localStorage.getItem('user');
-    if (!s) return null;
-    return Number(JSON.parse(s).id);
-  } catch {
-    return null;
-  }
+    if (s) {
+      const parsed = JSON.parse(s);
+      const id = Number(parsed.id);
+      if (Number.isFinite(id)) return id;
+    }
+  } catch {}
+
+  // 👉 GUEST
+  return 'guest';
 }
 
+/* ===================== COMPONENT ===================== */
 const ChatWidget: React.FC = () => {
   const userId = getUserId();
+  const isGuest = userId === 'guest';
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  /* ===================== AUTO SCROLL ===================== */
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ✅ HÀM LƯU VÀO LOCALSTORAGE
+  /* ===================== LOCAL STORAGE (USER ONLY) ===================== */
   const saveToLocalStorage = (msgs: Message[]) => {
-    if (!userId) return;
-    try {
-      localStorage.setItem(`chat_history_${userId}`, JSON.stringify(msgs));
-    } catch (err) {
-      console.error('Failed to save chat history to localStorage:', err);
-    }
+    if (isGuest) return;
+    localStorage.setItem(`chat_history_${userId}`, JSON.stringify(msgs));
   };
 
-  // ✅ SỬA LẠI HÀM LOAD HISTORY - XỬ LÝ ĐÚNG FORMAT [{message, response, created_at}]
+  /* ===================== LOAD HISTORY (USER ONLY) ===================== */
   const loadHistory = async () => {
-    if (!userId) return;
+    if (isGuest) return;
+
     try {
-      console.log('📚 Loading chat history...');
-      
-      // Load từ localStorage trước
       const localHistory = localStorage.getItem(`chat_history_${userId}`);
       if (localHistory) {
-        const localMsgs = JSON.parse(localHistory);
-        console.log('📦 Loaded from localStorage:', localMsgs);
-        setMessages(localMsgs.map((m: any) => ({
-          ...m,
-          timestamp: new Date(m.timestamp)
-        })));
+        setMessages(
+          JSON.parse(localHistory).map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          }))
+        );
       }
 
-      // Load từ API để sync
       const history = await chatbotService.getHistory(userId);
-      console.log('📚 History from API:', history);
-      
-      // ✅ XỬ LÝ FORMAT: [{message: "user msg", response: "bot msg", created_at}]
-      if (history && Array.isArray(history) && history.length > 0) {
+      if (Array.isArray(history)) {
         const msgs: Message[] = [];
-        let idCounter = Date.now();
-        
-        history.forEach((item: any) => {
-          const timestamp = new Date(item.created_at || Date.now());
-          
-          // ✅ THÊM TIN NHẮN USER
-          if (item.message) {
-            msgs.push({
-              id: idCounter++,
-              text: item.message,
-              sender: 'user',
-              timestamp: timestamp
-            });
-          }
-          
-          // ✅ THÊM TIN NHẮN BOT (ngay sau user message)
-          if (item.response) {
-            msgs.push({
-              id: idCounter++,
-              text: item.response,
-              sender: 'bot',
-              timestamp: timestamp
-            });
-          }
+        let id = Date.now();
+
+        history.forEach((h: any) => {
+          const time = new Date(h.created_at || Date.now());
+          if (h.message)
+            msgs.push({ id: id++, text: h.message, sender: 'user', timestamp: time });
+          if (h.response)
+            msgs.push({ id: id++, text: h.response, sender: 'bot', timestamp: time });
         });
-        
-        if (msgs.length > 0) {
+
+        if (msgs.length) {
           setMessages(msgs);
           saveToLocalStorage(msgs);
         }
       }
-    } catch (err) {
-      console.error('❌ Failed to load chat history:', err);
+    } catch (e) {
+      console.error('Load history error', e);
     }
   };
 
+  /* ===================== SOCKET (USER ONLY) ===================== */
   useEffect(() => {
-    if (!userId) return;
+    if (isGuest) return;
 
-    console.log('🤖 Chatbot initializing for user:', userId);
-    
     chatbotService.connect(userId);
     loadHistory();
 
-    chatbotService.onMessage((data) => {
-      console.log('📥 Received bot response:', data);
-      
-      const botMessage = data.response || data.message || 'Xin lỗi, tôi không hiểu.';
-      
-      // ✅ THÊM TIN NHẮN BOT VÀO STATE VÀ LƯU
-      setMessages((prev) => {
-        const newMessages = [
+    chatbotService.onMessage((data: any) => {
+      const botText = data.response || data.message || 'Xin lỗi, tôi chưa hiểu.';
+
+      setMessages(prev => {
+        const next: Message[] = [
           ...prev,
           {
             id: Date.now(),
-            text: botMessage,
-            sender: 'bot' as const,
+            text: botText,
+            sender: 'bot',
             timestamp: new Date(),
           },
         ];
-        saveToLocalStorage(newMessages);
-        return newMessages;
+        saveToLocalStorage(next);
+        return next;
       });
-      
+
       setIsLoading(false);
     });
 
-    return () => {
-      chatbotService.disconnect();
-    };
+    return () => chatbotService.disconnect();
   }, [userId]);
 
+  /* ===================== SEND ===================== */
   const handleSend = async () => {
-    if (!inputMessage.trim() || !userId || isLoading) return;
-
-    console.log('📤 Sending message:', inputMessage);
+    if (!inputMessage.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now(),
@@ -153,76 +127,41 @@ const ChatWidget: React.FC = () => {
       timestamp: new Date(),
     };
 
-    // ✅ THÊM TIN NHẮN USER VÀO STATE VÀ LƯU
-    setMessages((prev) => {
-      const newMessages = [...prev, userMsg];
-      saveToLocalStorage(newMessages);
-      return newMessages;
-    });
-    
-    const messageToSend = inputMessage;
+    setMessages(prev => [...prev, userMsg]);
     setInputMessage('');
-    setIsLoading(true);
 
-    try {
-      await chatbotService.sendMessage(userId, messageToSend);
-      console.log('✅ Message sent successfully');
-      // Chờ socket trả về response
-    } catch (err: any) {
-      console.error('❌ Failed to send message:', err);
-      
-      let errorMessage = 'Xin lỗi, có lỗi xảy ra.';
-      
-      if (err.message) {
-        if (err.message.includes('Gemini') || err.message.includes('AI')) {
-          errorMessage = '🤖 AI đang bảo trì. Vui lòng thử lại sau.';
-        } else if (err.message.includes('Network') || err.message.includes('fetch')) {
-          errorMessage = '📡 Lỗi kết nối. Vui lòng kiểm tra internet.';
-        } else {
-          errorMessage = `❌ ${err.message}`;
-        }
-      }
-      
-      setMessages((prev) => {
-        const newMessages = [
+    // 👉 GUEST BEHAVIOR
+    if (isGuest) {
+      setIsLoading(true);
+      setTimeout(() => {
+        setMessages(prev => [
           ...prev,
           {
             id: Date.now(),
-            text: errorMessage,
-            sender: 'bot' as const,
+            text: '🔒 Vui lòng đăng nhập để trò chuyện với AI.',
+            sender: 'bot',
             timestamp: new Date(),
           },
-        ];
-        saveToLocalStorage(newMessages);
-        return newMessages;
-      });
-      setIsLoading(false);
-    }
-  };
-
-  const handleClearHistory = async () => {
-    if (!userId || !confirm('Bạn có chắc muốn xóa toàn bộ lịch sử chat?'))
+        ]);
+        setIsLoading(false);
+      }, 600);
       return;
-    try {
-      await chatbotService.clearHistory(userId);
-      setMessages([]);
-      localStorage.removeItem(`chat_history_${userId}`);
-      console.log('🗑️ Chat history cleared');
-    } catch (err) {
-      console.error('❌ Failed to clear history:', err);
-      alert('Không thể xóa lịch sử chat');
     }
+
+    // 👉 USER BEHAVIOR
+    setIsLoading(true);
+    await chatbotService.sendMessage(userId, userMsg.text);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  /* ===================== CLEAR (USER ONLY) ===================== */
+  const handleClearHistory = async () => {
+    if (isGuest) return alert('Vui lòng đăng nhập');
+    await chatbotService.clearHistory(userId);
+    setMessages([]);
+    localStorage.removeItem(`chat_history_${userId}`);
   };
 
-  if (!userId) return null;
-
+  /* ===================== UI ===================== */
   return (
     <>
       {!isOpen && (
@@ -234,87 +173,32 @@ const ChatWidget: React.FC = () => {
       {isOpen && (
         <div className="chat-window">
           <div className="chat-header">
-            <div className="chat-header-left">
-              <span className="chat-header-icon">🤖</span>
-              <div>
-                <div className="chat-header-title">Trợ lý AI</div>
-                <div className="chat-header-subtitle">Powered by Gemini</div>
-              </div>
-            </div>
-            <div className="chat-header-actions">
-              <button
-                className="chat-header-btn"
-                onClick={handleClearHistory}
-                title="Xóa lịch sử"
-              >
-                🗑️
-              </button>
-              <button
-                className="chat-header-btn close-btn"
-                onClick={() => setIsOpen(false)}
-              >
-                ×
-              </button>
+            <strong>🤖 Trợ lý AI</strong>
+            <small>{isGuest ? 'Đăng nhập để dùng AI' : 'Powered by Gemini'}</small>
+            <div>
+              {!isGuest && <button onClick={handleClearHistory}>🗑️</button>}
+              <button onClick={() => setIsOpen(false)}>×</button>
             </div>
           </div>
 
           <div className="chat-messages">
-            {messages.length === 0 && (
-              <div className="chat-empty">
-                <div className="chat-empty-icon">👋</div>
-                <div>Xin chào! Tôi là trợ lý AI.</div>
-                <div style={{ fontSize: 12, marginTop: 8, color: '#666' }}>
-                  Hỏi tôi về sản phẩm, đơn hàng, hoặc bất cứ điều gì!
-                </div>
-              </div>
-            )}
-
-            {messages.map((msg) => (
-              <div key={msg.id} className={`message-wrapper ${msg.sender}`}>
-                <div className={`message-bubble ${msg.sender}`}>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>
-                    {msg.text}
-                  </div>
-                  <div className="message-time">
-                    {msg.timestamp.toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </div>
-                </div>
+            {messages.map(m => (
+              <div key={m.id} className={`msg ${m.sender}`}>
+                {m.text}
               </div>
             ))}
 
-            {isLoading && (
-              <div className="message-wrapper bot">
-                <div className="typing-indicator">
-                  <span className="typing-dot"></span>
-                  <span className="typing-dot"></span>
-                  <span className="typing-dot"></span>
-                </div>
-              </div>
-            )}
-
+            {isLoading && <div className="msg bot">Đang trả lời...</div>}
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="chat-input-area">
+          <div className="chat-input">
             <input
-              type="text"
-              className="chat-input"
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onChange={e => setInputMessage(e.target.value)}
               placeholder="Nhập tin nhắn..."
-              disabled={isLoading}
             />
-            <button
-              className="chat-send-btn"
-              onClick={handleSend}
-              disabled={isLoading || !inputMessage.trim()}
-            >
-              📤
-            </button>
+            <button onClick={handleSend}>Gửi</button>
           </div>
         </div>
       )}

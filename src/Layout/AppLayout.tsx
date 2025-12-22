@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom'; // Cần import Outlet
 import Header from './Header';
 import Footer from './Footer';
+import ChatWidget from '../components/ChatWidget';
 
 // Giữ lại Home.css theo yêu cầu (Chứa cả layout và các styles chung)
 import '../styles/Home.css'; 
@@ -39,7 +40,7 @@ const AppLayout: React.FC = () => {
 
             {/* 3. FOOTER (Full width) */}
             <Footer />
-            
+            <ChatWidget />
         </div>
     );
 };

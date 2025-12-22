@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 interface User {
-  id: string;
+  id: number;
   email: string;
   fullName: string;
   role: 'farmer' | 'consumer' | 'admin';

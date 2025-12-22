@@ -18,7 +18,7 @@ interface AuthResponse {
   success: boolean;
   token?: string;
   user?: {
-    id: string;
+    id: number;
     email: string;
     role: string;
     full_name?: string;

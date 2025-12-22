@@ -50,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
 
     // 2. Logic cập nhật giỏ hàng - Real-time với polling backup
     useEffect(() => {
-        let pollingInterval: NodeJS.Timeout;
+        let pollingInterval: ReturnType<typeof setInterval>;
         
         // Hàm cập nhật giỏ hàng
         const updateCartCount = async () => {
@@ -116,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
 
     // ✅ Socket.IO cho thông báo với polling backup
     useEffect(() => {
-        let pollingInterval: NodeJS.Timeout;
+        let pollingInterval: ReturnType<typeof setInterval>;
         
         // Lấy userId từ user prop hoặc localStorage
         let userId: number | null = null;

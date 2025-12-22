@@ -1,0 +1,25 @@
+.bar-chart {
+    margin: 20px 0;
+}
+
+.pie-chart {
+    margin: 20px 0;
+}
+
+.chart-axis {
+    font-size: 12px;
+    stroke: #888;
+}
+
+.chart-tooltip {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.chart-legend {
+    padding-top: 10px;
+    font-size: 12px;
+    color: #555;
+}

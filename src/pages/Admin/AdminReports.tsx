@@ -16,14 +16,19 @@ const AdminReports: React.FC = () => {
     });
     const [viewType, setViewType] = useState<'daily' | 'monthly'>('daily');
 
-    useEffect(() => { loadData(); }, [dateRange, viewType]);
+    useEffect(() => {
+    loadData();
+    }, [dateRange.from, dateRange.to, viewType]);
+
 
     const loadData = async () => {
         setLoading(true);
         try {
             // Admin không truyền seller_id -> Lấy toàn sàn
             const data = await reportService.getChartData({
-                from_date: dateRange.from,
+                from_date: viewType === 'monthly'
+                    ? dateRange.from.slice(0, 7) + '-01'
+                    : dateRange.from,
                 to_date: dateRange.to,
                 type: viewType
             });
@@ -47,8 +52,11 @@ const AdminReports: React.FC = () => {
     return (
         <div className="admin-reports fade-in" style={{padding: 20}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
-                <h2 style={{margin:0, color: '#2c3e50'}}>📊 Thống kê Toàn Sàn</h2>
-                
+               {!loading && chartData.length === 0 && (
+                    <div style={{ textAlign:'center', padding:20, color:'#888' }}>
+                        Không có dữ liệu trong khoảng thời gian này
+                    </div>
+                )}
                 <div style={{display:'flex', gap: 10}}>
                     <select value={viewType} onChange={(e) => setViewType(e.target.value as any)} style={{padding:8, borderRadius:6, border:'1px solid #ddd'}}>
                         <option value="daily">Theo Ngày</option>

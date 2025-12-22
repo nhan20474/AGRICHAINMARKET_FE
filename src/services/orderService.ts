@@ -197,26 +197,31 @@ export const orderService = {
     },
 
     // 9. Admin: Lấy danh sách đơn hàng
-    async adminGetOrders(adminId: number, status?: string): Promise<Order[]> {
-    let url = `http://localhost:3000/api/admin/orders?admin_id=${adminId}`;
-    if (status) url += `&status=${status}`;
+    async adminGetOrders(adminId: number, status?: string, limit?: number): Promise<Order[]> {
+        let url = `http://localhost:3000/api/admin/orders?admin_id=${adminId}`;
+        if (status) url += `&status=${status}`;
+        if (limit) url += `&limit=${limit}`; // Thêm tham số `limit` nếu được truyền vào
 
-    const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token'); // Lấy token từ localStorage
 
-    const res = await fetch(url, {
-        headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        if (!token) {
+            throw new Error('Không tìm thấy token. Vui lòng đăng nhập lại.');
         }
-    });
 
-    if (!res.ok) {
-        const text = await res.text();
-        console.error('Admin orders API error:', text);
-        throw new Error('Không thể tải đơn hàng (Admin)');
-    }
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`, // Gửi token trong header
+                'Content-Type': 'application/json'
+            }
+        });
 
-    return await res.json();
+        if (!res.ok) {
+            const text = await res.text();
+            console.error('Admin orders API error:', text);
+            throw new Error('Không thể tải đơn hàng (Admin)');
+        }
+
+        return await res.json();
     },
 
     // 10. Admin: Xem chi tiết đơn hàng

@@ -3,9 +3,23 @@ import {
     Bell, ChevronDown, Users, ShoppingCart, 
     DollarSign, BarChart, Menu, LogOut, Settings, TrendingUp, Package , ClipboardList
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart as ReBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/Dashboard.css';
+import '../../styles/Charts.css'; // Import the new CSS file for charts
 
 import UserManager from './UserManager';
 import ProductManager from './ProductManager';
@@ -16,6 +30,21 @@ import PanelManager from './PanelManager';
 import DiscountManager from './DiscountManager';
 import AdminReports from './AdminReports';
 import AdminOrderManager from './OrderManager';
+import { orderService } from '../../services/orderService';
+const ORDER_COLORS = [
+  '#10B981',
+  '#F59E0B',
+  '#EF4444',
+];
+const REVENUE_DATA = [
+  { month: 'T1', revenue: 4000 },
+  { month: 'T2', revenue: 5200 },
+  { month: 'T3', revenue: 6800 },
+  { month: 'T4', revenue: 5500 },
+  { month: 'T5', revenue: 7200 },
+  { month: 'T6', revenue: 8500 },
+];
+
 
 interface Stats {
     totalUsers: number;
@@ -73,28 +102,52 @@ export default function AdminDashboard() {
     const [stats, setStats] = useState<Stats>(initialStats);
     const [recentOrders, setRecentOrders] = useState<Order[]>([]);
     const navigate = useNavigate();
-
+    const { user } = useAuth();   // ✅ LẤY USER TỪ CONTEXT
+    const adminId = user?.id ? Number(user.id) : undefined;
     // Fetch dashboard stats from API
-    useEffect(() => {
-        fetch('http://localhost:3000/api/reports/admin/dashboard')
-            .then(res => res.json())
-            .then(data => {
-                setStats({
-                    totalUsers: data.total_users,
-                    totalFarmers: data.total_sellers,
-                    totalConsumers: data.total_buyers,
-                    totalProducts: data.total_products,
-                    totalOrders: data.total_orders,
-                    totalRevenue: data.total_revenue,
-                    pendingOrders: data.pending_orders,
-                    activeProducts: data.total_products - (data.low_stock_products || 0),
-                    completedOrders: data.completed_orders,
-                    cancelledOrders: data.cancelled_orders,
-                    lowStockProducts: data.low_stock_products,
-                });
-            })
-            .catch(() => {});
-    }, []);
+useEffect(() => {
+    /* ================= DASHBOARD STATS (GIỮ NGUYÊN) ================= */
+    fetch('http://localhost:3000/api/reports/admin/dashboard')
+        .then(res => res.json())
+        .then(data => {
+            setStats({
+                totalUsers: data.total_users,
+                totalFarmers: data.total_sellers,
+                totalConsumers: data.total_buyers,
+                totalProducts: data.total_products,
+                totalOrders: data.total_orders,
+                totalRevenue: data.total_revenue,
+                pendingOrders: data.pending_orders,
+                activeProducts: data.total_products - (data.low_stock_products || 0),
+                completedOrders: data.completed_orders,
+                cancelledOrders: data.cancelled_orders,
+                lowStockProducts: data.low_stock_products,
+            });
+        })
+        .catch(() => {
+            console.error('Không thể tải dữ liệu thống kê.');
+        });
+
+    /* ================= RECENT ORDERS (DÙNG SERVICE) ================= */
+    if (!adminId) return;
+
+    orderService
+        .adminGetOrders(adminId, undefined, 5) // lấy 5 đơn gần nhất
+        .then(data => {
+            const orders = data.map((order: any) => ({
+                id: order.id,
+                customer: order.buyer_name,
+                total: order.total_amount,
+                status: order.status,
+                date: order.created_at,
+            }));
+            setRecentOrders(orders);
+        })
+        .catch(err => {
+            console.error('Lỗi lấy đơn hàng:', err.message);
+        });
+
+}, [adminId]);
 
     const renderMainContent = () => {
         if (activeMenu === 'users_list') return <UserManager />;
@@ -139,24 +192,88 @@ export default function AdminDashboard() {
                 <div className="charts-section">
                     <div className="chart-card">
                         <h3>Doanh thu 6 tháng</h3>
-                        <div className="chart-placeholder">
-                            <BarChart size={40} />
-                            <p>Biểu đồ cột</p>
-                        </div>
+                        <ResponsiveContainer width="100%" height={260}>
+                            <ReBarChart data={REVENUE_DATA} className="bar-chart">
+                                <XAxis 
+                                    dataKey="month" 
+                                    className="chart-axis"
+                                />
+                                <YAxis 
+                                    className="chart-axis"
+                                />
+                                <Tooltip 
+                                    contentStyle={{
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        color: '#333',
+                                    }}
+                                    wrapperStyle={{
+                                        padding: '5px',
+                                    }}
+                                    formatter={(value) => {
+                                        if (value === undefined) return 'N/A'; // Kiểm tra nếu value là undefined
+                                        return `${value.toLocaleString('vi-VN')}đ`;
+                                    }}
+                                />
+                                <Legend 
+                                    className="chart-legend"
+                                    formatter={() => 'Doanh thu'}
+                                />
+                                <Bar 
+                                    dataKey="revenue" 
+                                    fill="#3B82F6" 
+                                    radius={[8, 8, 0, 0]}
+                                    name="Doanh thu"
+                                />
+                            </ReBarChart>
+                        </ResponsiveContainer>
                     </div>
                     <div className="chart-card">
                         <h3>Trạng thái đơn hàng</h3>
-                        <div className="chart-placeholder">
-                            {/* Show order status summary */}
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                <li>Hoàn thành: {stats.completedOrders}</li>
-                                <li>Đã huỷ: {stats.cancelledOrders}</li>
-                                <li>Chờ xử lý: {stats.pendingOrders}</li>
-                            </ul>
-                        </div>
+                        <ResponsiveContainer width="100%" height={260}>
+                            <PieChart className="pie-chart">
+                                <Pie
+                                    data={[
+                                        { name: 'Hoàn thành', value: stats.completedOrders || 0 },
+                                        { name: 'Chờ xử lý', value: stats.pendingOrders || 0 },
+                                        { name: 'Đã huỷ', value: stats.cancelledOrders || 0 },
+                                    ]}
+                                    dataKey="value"
+                                    innerRadius={60}
+                                    outerRadius={90}
+                                    paddingAngle={4}
+                                    label={({ name, value }) => `${name}: ${value}`}
+                                >
+                                    {ORDER_COLORS.map((color, index) => (
+                                        <Cell key={index} fill={color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        color: '#333',
+                                    }}
+                                    wrapperStyle={{
+                                        padding: '5px',
+                                    }}
+                                    formatter={(value) => {
+                                        if (value === undefined) return 'N/A'; // Kiểm tra nếu value là undefined
+                                        return `${value} đơn`;
+                                    }}
+                                />
+                                <Legend 
+                                    className="chart-legend"
+                                    formatter={(value) => value}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
-
                 <div className="orders-card">
                     <h3>Đơn hàng gần đây</h3>
                     <RecentOrdersTable orders={recentOrders} />

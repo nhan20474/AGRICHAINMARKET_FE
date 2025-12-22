@@ -81,7 +81,6 @@ const AppRoutes = () => (
       {/* 404 */}
       <Route path="*" element={<div style={{ padding: 16 }}>Not Found</div>} />
     </Routes>
-    <ChatWidget />
   </Suspense>
 );
 
