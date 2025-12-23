@@ -1,89 +1,230 @@
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, BarChart2 } from 'lucide-react';
-import { reportService, ChartDataPoint } from '../../services/reportService';
-import SimpleBarChart from '../../components/SimpleBarChart';
-
+import React, { useEffect, useState, useCallback } from 'react';
+import { RefreshCw, Calendar, TrendingUp, Users, Package, AlertTriangle } from 'lucide-react';
+import { 
+  ReportService, 
+  AdminDashboardStats, 
+  SalesTrendItem, 
+  TopProductItem 
+} from '../../services/reportService'; 
+import SimpleBarChart from '../../components/SimpleBarChart'; 
+import '../../styles/AdminReports.css';
 
 const AdminReports: React.FC = () => {
-    const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [syncing, setSyncing] = useState(false);
-    
-    // Filter
-    const [dateRange, setDateRange] = useState({
-        from: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0], 
-        to: new Date().toISOString().split('T')[0]
-    });
-    const [viewType, setViewType] = useState<'daily' | 'monthly'>('daily');
+  // --- State ---
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+  const [trend, setTrend] = useState<SalesTrendItem[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
+  
+  const [loading, setLoading] = useState<boolean>(true);
+  const [trendType, setTrendType] = useState<'daily' | 'monthly'>('daily');
+  
+  // Mặc định lấy dữ liệu tháng hiện tại
+  const [dateFilter, setDateFilter] = useState({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], // Ngày 1 tháng này
+    to: new Date().toISOString().split('T')[0] // Hôm nay
+  });
 
-    useEffect(() => {
-    loadData();
-    }, [dateRange.from, dateRange.to, viewType]);
+  // --- Helpers ---
+  const formatCurrency = (value: number | string) => {
+    return Number(value).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  };
 
+  // --- Fetch Data ---
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Gọi song song để tiết kiệm thời gian
+      const [dashboardData, topProdData] = await Promise.all([
+        ReportService.getAdminDashboard(),
+        ReportService.getAdminTopProducts(5)
+      ]);
 
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            // Admin không truyền seller_id -> Lấy toàn sàn
-            const data = await reportService.getChartData({
-                from_date: viewType === 'monthly'
-                    ? dateRange.from.slice(0, 7) + '-01'
-                    : dateRange.from,
-                to_date: dateRange.to,
-                type: viewType
-            });
-            setChartData(data);
-        } catch (error) { console.error(error); }
-        setLoading(false);
-    };
+      setStats(dashboardData);
+      setTopProducts(topProdData);
+    } catch (error) {
+      console.error("Lỗi tải dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const handleSync = async () => {
-        setSyncing(true);
-        try {
-            await reportService.syncData();
-            alert("Đã cập nhật số liệu hệ thống!");
-            loadData();
-        } catch (e) { alert("Lỗi đồng bộ"); }
-        setSyncing(false);
-    };
+  const fetchTrendData = useCallback(async () => {
+    try {
+      const trendData = await ReportService.getAdminTrend(trendType, dateFilter.from, dateFilter.to);
+      setTrend(trendData);
+    } catch (error) {
+      console.error("Lỗi tải biểu đồ:", error);
+    }
+  }, [trendType, dateFilter]);
 
-    const totalRevenue = chartData.reduce((sum, d) => sum + d.revenue, 0);
+  // --- Effects ---
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-    return (
-        <div className="admin-reports fade-in" style={{padding: 20}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
-               {!loading && chartData.length === 0 && (
-                    <div style={{ textAlign:'center', padding:20, color:'#888' }}>
-                        Không có dữ liệu trong khoảng thời gian này
-                    </div>
-                )}
-                <div style={{display:'flex', gap: 10}}>
-                    <select value={viewType} onChange={(e) => setViewType(e.target.value as any)} style={{padding:8, borderRadius:6, border:'1px solid #ddd'}}>
-                        <option value="daily">Theo Ngày</option>
-                        <option value="monthly">Theo Tháng</option>
-                    </select>
-                    <button onClick={handleSync} disabled={syncing} style={{padding:'8px 12px', background:'#fff', border:'1px solid #28a745', color:'#28a745', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', gap:5}}>
-                        <RefreshCw size={16} className={syncing?'spin':''}/> {syncing ? 'Syncing...' : 'Cập nhật'}
-                    </button>
-                </div>
+  useEffect(() => {
+    fetchTrendData();
+  }, [fetchTrendData]);
+
+  // --- Handlers ---
+  const handleRefresh = () => {
+    fetchDashboardData();
+    fetchTrendData();
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDateFilter(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  if (loading && !stats) {
+    return <div className="loading-screen">Đang tải dữ liệu báo cáo...</div>;
+  }
+
+  return (
+    <div className="admin-reports-container">
+      {/* 1. Header & Toolbar */}
+      <div className="reports-header">
+        <h1 className="page-title">Báo Cáo Thống Kê</h1>
+        <button onClick={handleRefresh} className="btn-refresh">
+          <RefreshCw size={18} /> Cập nhật
+        </button>
+      </div>
+
+      {/* 2. Dashboard Cards Overview */}
+      {stats && (
+        <div className="stats-grid">
+          {/* Doanh thu */}
+          <div className="stat-card revenue">
+            <div className="stat-icon"><TrendingUp /></div>
+            <div className="stat-info">
+              <h3>Tổng Doanh Thu</h3>
+              <p className="stat-value">{formatCurrency(stats.total_revenue)}</p>
+              <span className="stat-sub">Đã hoàn thành</span>
             </div>
+          </div>
 
-            <div style={{background: '#e3f2fd', padding: 20, borderRadius: 12, marginBottom: 30}}>
-                <div style={{fontSize: 14, color: '#0d47a1'}}>Tổng doanh thu (Giai đoạn này)</div>
-                <div style={{fontSize: 32, fontWeight: 800, color: '#0d47a1'}}>{totalRevenue.toLocaleString('vi-VN')}đ</div>
+          {/* Đơn hàng */}
+          <div className="stat-card orders">
+            <div className="stat-icon"><Package /></div>
+            <div className="stat-info">
+              <h3>Đơn Hàng</h3>
+              <p className="stat-value">{stats.total_orders}</p>
+              <div className="stat-details">
+                <span className="success">{stats.completed_orders} Thành công</span>
+                <span className="warning">{stats.pending_orders} Chờ xử lý</span>
+              </div>
             </div>
+          </div>
 
-            <div style={{background: '#fff', padding: 20, borderRadius: 12, border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'}}>
-                <h4 style={{marginTop:0, color:'#555'}}>Biểu đồ Doanh Thu</h4>
-                {loading ? <div style={{textAlign:'center', padding:20}}>Đang tải...</div> : (
-                    <SimpleBarChart 
-                        data={chartData.map(d => ({ label: d.label, value: d.revenue, tooltip: `${d.label}: ${d.revenue.toLocaleString()}đ` }))}
-                        color="#28a745"
-                    />
-                )}
+          {/* Người dùng */}
+          <div className="stat-card users">
+            <div className="stat-icon"><Users /></div>
+            <div className="stat-info">
+              <h3>Người Dùng</h3>
+              <p className="stat-value">{stats.total_users}</p>
+              <div className="stat-details">
+                <span>{stats.total_buyers} Mua</span> / <span>{stats.total_sellers} Bán</span>
+              </div>
             </div>
+          </div>
+
+          {/* Cảnh báo tồn kho */}
+          <div className="stat-card warning">
+            <div className="stat-icon"><AlertTriangle /></div>
+            <div className="stat-info">
+              <h3>Cảnh Báo Kho</h3>
+              <p className="stat-value">{stats.low_stock_products}</p>
+              <span className="stat-sub">Sản phẩm sắp hết</span>
+            </div>
+          </div>
         </div>
-    );
+      )}
+
+      {/* 3. Main Content: Chart & Top Products */}
+      <div className="reports-content-grid">
+        
+        {/* Left Column: Chart */}
+        <div className="chart-section">
+          <div className="section-header">
+            <h2>Biểu Đồ Doanh Thu</h2>
+            <div className="chart-controls">
+              <select 
+                value={trendType} 
+                onChange={(e) => setTrendType(e.target.value as 'daily' | 'monthly')}
+                className="select-input"
+              >
+                <option value="daily">Theo Ngày</option>
+                <option value="monthly">Theo Tháng</option>
+              </select>
+              <div className="date-inputs">
+                <input 
+                  type="date" 
+                  name="from" 
+                  value={dateFilter.from} 
+                  onChange={handleDateChange} 
+                />
+                <span>—</span>
+                <input 
+                  type="date" 
+                  name="to" 
+                  value={dateFilter.to} 
+                  onChange={handleDateChange} 
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="chart-container">
+            {/* Component SimpleBarChart của bạn */}
+            {/* Giả sử nó nhận data, labelKey và valueKey */}
+                <SimpleBarChart 
+                    data={trend.map(item => ({
+                    label: item.label,
+                    value: Number(item.total_revenue), // Chuyển đổi 'total_revenue' thành 'value'
+                    tooltip: `Doanh thu: ${Number(item.total_revenue).toLocaleString('vi-VN')}đ` // Tạo tooltip
+                    }))}
+                    // Vì SimpleBarChart của bạn đang fix cứng kiểu dữ liệu đầu vào
+                    // nên có thể không cần props xAxisKey hay barKey nữa (tùy code component của bạn)
+                    color="#4CAF50"
+                />
+            {trend.length === 0 && <p className="no-data">Không có dữ liệu trong khoảng thời gian này.</p>}
+          </div>
+        </div>
+
+        {/* Right Column: Top Products */}
+        <div className="top-products-section">
+          <h2>Top 5 Sản Phẩm Bán Chạy</h2>
+          <div className="products-list">
+            {topProducts.length > 0 ? (
+              <table className="products-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th className="text-right">Đã bán</th>
+                    <th className="text-right">Doanh thu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topProducts.map((prod) => (
+                    <tr key={prod.product_id}>
+                      <td>#{prod.product_id}</td>
+                      <td className="text-right">{prod.total_sold}</td>
+                      <td className="text-right revenue-text">
+                        {formatCurrency(prod.revenue)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="no-data">Chưa có dữ liệu sản phẩm.</p>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
 };
 
 export default AdminReports;

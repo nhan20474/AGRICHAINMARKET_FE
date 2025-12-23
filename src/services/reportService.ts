@@ -1,88 +1,161 @@
-const API_URL = 'http://localhost:3000/api/reports';
+// ==========================================
+// CONFIGURATION
+// ==========================================
+const API_URL = 'http://localhost:3000/api/reports'; // Đổi lại port của bạn nếu khác
 
-export interface DashboardStats {
-    revenue: number;
-    completed_orders: number;
-    pending_orders: number;
-    total_products: number;
+// ==========================================
+// HELPER FUNCTION (Thay thế Axios)
+// ==========================================
+async function get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+  // 1. Xử lý Query String bằng URLSearchParams
+  const url = new URL(`${API_URL}${endpoint}`);
+  
+  if (params) {
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null) {
+        url.searchParams.append(key, String(params[key]));
+      }
+    });
+  }
+
+  // 2. Gọi Fetch
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      // 'Authorization': `Bearer ${token}` // Thêm token nếu cần
+    },
+  });
+
+  // 3. Xử lý lỗi HTTP (Fetch không tự throw lỗi khi gặp 4xx, 5xx)
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.message || `HTTP error! status: ${response.status}`);
+  }
+
+  // 4. Trả về JSON
+  return await response.json();
 }
 
-export interface ChartDataPoint {
-    label: string;      // 2025-10-20 hoặc 2025-10
-    revenue: number;
-    orders: number;
+// ==========================================
+// INTERFACES (Kiểu dữ liệu)
+// ==========================================
+
+export interface AdminDashboardStats {
+  total_revenue: number;
+  total_orders: number;
+  completed_orders: number;
+  cancelled_orders: number;
+  pending_orders: number;
+  total_users: number;
+  total_sellers: number;
+  total_buyers: number;
+  total_products: number;
+  low_stock_products: number;
 }
 
-export const reportService = {
+export interface SalesTrendItem {
+  label: string;
+  total_orders: string | number; 
+  total_revenue: string | number;
+  total_quantity?: string | number; 
+}
 
-    // =============================
-    // 1. DASHBOARD STATS (REALTIME)
-    // =============================
-    async getDashboardStats(sellerId?: number): Promise<DashboardStats> {
-        const url = new URL(`${API_URL}/dashboard-stats`);
+export interface TopProductItem {
+  product_id: number;
+  total_sold: string | number;
+  revenue: string | number;
+}
 
-        if (sellerId !== undefined && sellerId !== null) {
-            url.searchParams.append('seller_id', String(sellerId));
-        }
+export interface FarmerAllTimeStats {
+  total_orders: string | number;
+  total_quantity: string | number;
+  total_revenue: string | number;
+  total_discount: string | number;
+  average_order_value: string | number;
+  pending_orders: string | number;
+  cancelled_orders: string | number;
+}
 
-        const res = await fetch(url.toString());
-        if (!res.ok) throw new Error('Lỗi tải thống kê dashboard');
+// Các interface phản hồi từ Server (dựa trên res.json của backend)
+interface TrendResponse {
+  success: boolean;
+  trend: SalesTrendItem[];
+}
+interface TopProductResponse {
+  success: boolean;
+  top_products: TopProductItem[];
+}
+interface FarmerStatsResponse {
+  success: boolean;
+  seller_id: number;
+  data: FarmerAllTimeStats;
+}
 
-        return await res.json();
-    },
+// ==========================================
+// SERVICE METHODS
+// ==========================================
 
-    // =============================
-    // 2. CHART DATA (FROM REPORTS)
-    // =============================
-    async getChartData(params: { 
-        seller_id?: number; 
-        from_date?: string; 
-        to_date?: string; 
-        type?: 'daily' | 'monthly';
-    }): Promise<ChartDataPoint[]> {
+export const ReportService = {
+  
+  // --- ADMIN ---
 
-        const url = new URL(`${API_URL}/chart`);
+  /**
+   * GET /api/reports/admin/dashboard
+   */
+  getAdminDashboard: async (): Promise<AdminDashboardStats> => {
+    // Backend trả về trực tiếp object, không có wrapper { success: true }
+    return await get<AdminDashboardStats>('/admin/dashboard');
+  },
 
-        if (params.seller_id !== undefined && params.seller_id !== null) {
-            url.searchParams.append('seller_id', String(params.seller_id));
-        }
+  /**
+   * GET /api/reports/admin/trend
+   */
+  getAdminTrend: async (
+    type: 'daily' | 'monthly', 
+    from?: string, 
+    to?: string
+  ): Promise<SalesTrendItem[]> => {
+    const data = await get<TrendResponse>('/admin/trend', { type, from, to });
+    return data.trend;
+  },
 
-        if (params.from_date) {
-            url.searchParams.append('from_date', params.from_date);
-        }
+  /**
+   * GET /api/reports/admin/top-products
+   */
+  getAdminTopProducts: async (limit: number = 5): Promise<TopProductItem[]> => {
+    const data = await get<TopProductResponse>('/admin/top-products', { limit });
+    return data.top_products;
+  },
 
-        if (params.to_date) {
-            url.searchParams.append('to_date', params.to_date);
-        }
+  // --- FARMER ---
 
-        if (params.type) {
-            url.searchParams.append('type', params.type);
-        }
+  /**
+   * GET /api/reports/farmer/:sellerId/all-time
+   */
+  getFarmerAllTimeStats: async (sellerId: number): Promise<FarmerAllTimeStats> => {
+    const data = await get<FarmerStatsResponse>(`/farmer/${sellerId}/all-time`);
+    return data.data;
+  },
 
-        const res = await fetch(url.toString());
-        if (!res.ok) throw new Error('Lỗi tải dữ liệu biểu đồ');
+  /**
+   * GET /api/reports/farmer/:sellerId/trend
+   */
+  getFarmerTrend: async (
+    sellerId: number,
+    type: 'daily' | 'monthly',
+    from?: string,
+    to?: string
+  ): Promise<SalesTrendItem[]> => {
+    const data = await get<TrendResponse>(`/farmer/${sellerId}/trend`, { type, from, to });
+    return data.trend;
+  },
 
-        const data = await res.json();
-
-        return data.map((item: any) => ({
-            label: item.label,
-            revenue: Number(item.revenue || 0),
-            orders: Number(item.orders || 0)
-        }));
-    },
-
-    // =============================
-    // 3. SYNC REPORT DATA
-    // =============================
-    async syncData(date?: string) {
-        const res = await fetch(`${API_URL}/sync`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: date ? JSON.stringify({ date }) : JSON.stringify({})
-        });
-
-        if (!res.ok) throw new Error('Lỗi đồng bộ dữ liệu báo cáo');
-
-        return await res.json();
-    }
+  /**
+   * GET /api/reports/farmer/:sellerId/top-products
+   */
+  getFarmerTopProducts: async (sellerId: number, limit: number = 5): Promise<TopProductItem[]> => {
+    const data = await get<TopProductResponse>(`/farmer/${sellerId}/top-products`, { limit });
+    return data.top_products;
+  }
 };

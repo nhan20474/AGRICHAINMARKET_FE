@@ -99,9 +99,22 @@ const FarmerOverviewSection: React.FC<{ sellerId: number, onNavigate: (key: stri
         const fetchOverviewData = async () => {
             try {
                 // 1. Lấy Thống kê tổng quan (Doanh thu, số lượng đơn)
-                const statsRes = await fetch(`http://localhost:3000/api/reports/dashboard-stats?seller_id=${sellerId}`);
-                const statsData = await statsRes.json();
-                setStats(statsData);
+            const statsRes = await fetch(`http://localhost:3000/api/reports/farmer/${sellerId}/all-time`);
+            
+            if (!statsRes.ok) throw new Error('Failed to fetch stats');
+            
+            const statsData = await statsRes.json();
+            
+            // Backend trả về: { success: true, data: { total_revenue, pending_orders, total_orders... } }
+            // Cần map vào state của Frontend
+            if (statsData.success && statsData.data) {
+                setStats(prev => ({
+                    ...prev,
+                    revenue: Number(statsData.data.total_revenue),
+                    pending_orders: Number(statsData.data.pending_orders),
+                    completed_orders: Number(statsData.data.total_orders) 
+                }));
+            }
 
                 // 2. Lấy Đơn hàng gần đây (Lấy 5 đơn mới nhất)
                 const ordersRes = await fetch(`http://localhost:3000/api/orders/by-seller/${sellerId}`);
@@ -113,6 +126,12 @@ const FarmerOverviewSection: React.FC<{ sellerId: number, onNavigate: (key: stri
                 // 3. Lấy Sản phẩm sắp hết hàng (< 10 đơn vị)
                 const productsRes = await fetch(`http://localhost:3000/api/products?seller_id=${sellerId}`);
                 const productsData = await productsRes.json();
+                const activeProducts = productsData.filter((p: any) => p.status !== 'deleted');
+                setStats(prev => ({
+                    ...prev,
+                    total_products: activeProducts.length
+                }));
+                
                 if (Array.isArray(productsData)) {
                     const lowStock = productsData.filter((p: any) => p.quantity <= 10 && p.status !== 'deleted');
                     setLowStockProducts(lowStock.slice(0, 5)); // Lấy top 5 cảnh báo
@@ -124,7 +143,6 @@ const FarmerOverviewSection: React.FC<{ sellerId: number, onNavigate: (key: stri
                 setLoading(false);
             }
         };
-
         fetchOverviewData();
     }, [sellerId]);
 

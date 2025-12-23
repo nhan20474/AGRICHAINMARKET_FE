@@ -4,22 +4,13 @@ import {
     DollarSign, BarChart, Menu, LogOut, Settings, TrendingUp, Package , ClipboardList
 } from 'lucide-react';
 import {
-  ResponsiveContainer,
-  BarChart as ReBarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
+  ResponsiveContainer,BarChart as ReBarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell,
 } from 'recharts';
 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/Dashboard.css';
-import '../../styles/Charts.css'; // Import the new CSS file for charts
+import '../../styles/Charts.css'; 
 
 import UserManager from './UserManager';
 import ProductManager from './ProductManager';
@@ -36,15 +27,6 @@ const ORDER_COLORS = [
   '#F59E0B',
   '#EF4444',
 ];
-const REVENUE_DATA = [
-  { month: 'T1', revenue: 4000 },
-  { month: 'T2', revenue: 5200 },
-  { month: 'T3', revenue: 6800 },
-  { month: 'T4', revenue: 5500 },
-  { month: 'T5', revenue: 7200 },
-  { month: 'T6', revenue: 8500 },
-];
-
 
 interface Stats {
     totalUsers: number;
@@ -96,10 +78,59 @@ const menuItems = [
     { name: 'Thông báo', icon: Bell, key: 'broadcast' },
 ];
 
+const loadDashboard = async (setStats: React.Dispatch<React.SetStateAction<Stats>>) => {
+    const res = await fetch('http://localhost:3000/api/reports/admin/dashboard');
+    const data = await res.json();
+
+    setStats({
+        totalUsers: data.total_users,
+        totalFarmers: data.total_sellers,
+        totalConsumers: data.total_buyers,
+        totalProducts: data.total_products,
+        totalOrders: data.total_orders,
+        totalRevenue: data.total_revenue,
+        pendingOrders: data.pending_orders,
+        completedOrders: data.completed_orders,
+        cancelledOrders: data.cancelled_orders,
+        lowStockProducts: data.low_stock_products,
+        activeProducts: data.total_products - (data.low_stock_products || 0),
+    });
+};
+
+const loadRevenueChart = async (
+    setRevenueChart: React.Dispatch<React.SetStateAction<any[]>>
+) => {
+    try {
+        // 1. SỬA URL: Thêm /admin vào giữa reports và trend
+        const res = await fetch('http://localhost:3000/api/reports/admin/trend?type=monthly');
+
+        // 2. Kiểm tra lỗi HTTP trước khi parse JSON (để tránh lỗi "<!DOCTYPE...")
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        // 3. SỬA CÁCH LẤY DỮ LIỆU:
+        // Backend trả về object { success: true, trend: [...] }
+        // Cần truy cập vào data.trend
+        if (data.success && Array.isArray(data.trend)) {
+            setRevenueChart(
+                data.trend.map((d: any) => ({
+                    month: d.label,                    // Backend trả về 'label'
+                    revenue: Number(d.total_revenue),  // Backend trả về 'total_revenue' (không phải 'revenue')
+                }))
+            );
+        }
+    } catch (error) {
+        console.error("❌ Lỗi tải biểu đồ:", error);
+    }
+};
 export default function AdminDashboard() {
     const [activeMenu, setActiveMenu] = useState('dashboard');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [stats, setStats] = useState<Stats>(initialStats);
+    const [revenueChart, setRevenueChart] = useState<any[]>([]);
     const [recentOrders, setRecentOrders] = useState<Order[]>([]);
     const navigate = useNavigate();
     const { user } = useAuth();   // ✅ LẤY USER TỪ CONTEXT
@@ -107,27 +138,8 @@ export default function AdminDashboard() {
     // Fetch dashboard stats from API
 useEffect(() => {
     /* ================= DASHBOARD STATS (GIỮ NGUYÊN) ================= */
-    fetch('http://localhost:3000/api/reports/admin/dashboard')
-        .then(res => res.json())
-        .then(data => {
-            setStats({
-                totalUsers: data.total_users,
-                totalFarmers: data.total_sellers,
-                totalConsumers: data.total_buyers,
-                totalProducts: data.total_products,
-                totalOrders: data.total_orders,
-                totalRevenue: data.total_revenue,
-                pendingOrders: data.pending_orders,
-                activeProducts: data.total_products - (data.low_stock_products || 0),
-                completedOrders: data.completed_orders,
-                cancelledOrders: data.cancelled_orders,
-                lowStockProducts: data.low_stock_products,
-            });
-        })
-        .catch(() => {
-            console.error('Không thể tải dữ liệu thống kê.');
-        });
-
+    loadDashboard(setStats);
+    loadRevenueChart(setRevenueChart);
     /* ================= RECENT ORDERS (DÙNG SERVICE) ================= */
     if (!adminId) return;
 
@@ -192,38 +204,23 @@ useEffect(() => {
                 <div className="charts-section">
                     <div className="chart-card">
                         <h3>Doanh thu 6 tháng</h3>
-                        <ResponsiveContainer width="100%" height={260}>
-                            <ReBarChart data={REVENUE_DATA} className="bar-chart">
+                         <ResponsiveContainer width="100%" height={260}>
+                            <ReBarChart data={revenueChart} className="bar-chart">                               
                                 <XAxis 
-                                    dataKey="month" 
+                                    dataKey="month"
                                     className="chart-axis"
                                 />
-                                <YAxis 
-                                    className="chart-axis"
-                                />
-                                <Tooltip 
-                                    contentStyle={{
-                                        backgroundColor: '#fff',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
-                                        color: '#333',
-                                    }}
-                                    wrapperStyle={{
-                                        padding: '5px',
-                                    }}
-                                    formatter={(value) => {
-                                        if (value === undefined) return 'N/A'; // Kiểm tra nếu value là undefined
+                                <YAxis className="chart-axis" />
+                                <Tooltip
+                                    formatter={(value?: number) => {
+                                        if (typeof value !== 'number') return '0đ';
                                         return `${value.toLocaleString('vi-VN')}đ`;
                                     }}
                                 />
-                                <Legend 
-                                    className="chart-legend"
-                                    formatter={() => 'Doanh thu'}
-                                />
-                                <Bar 
-                                    dataKey="revenue" 
-                                    fill="#3B82F6" 
+                                <Legend formatter={() => 'Doanh thu'} />
+                                <Bar
+                                    dataKey="revenue"
+                                    fill="#3B82F6"
                                     radius={[8, 8, 0, 0]}
                                     name="Doanh thu"
                                 />
