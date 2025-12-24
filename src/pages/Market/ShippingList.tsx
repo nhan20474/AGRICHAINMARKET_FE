@@ -35,7 +35,7 @@ const ShippingList: React.FC = () => {
   const [buyerId, setBuyerId] = useState<number | null>(null);
   const [resolvingBuyer, setResolvingBuyer] = useState(true);
 
-// Hàm xác định buyerId - Đơn giản hóa, chỉ dùng localStorage
+  // Hàm xác định buyerId - Đơn giản hóa, chỉ dùng localStorage
   const resolveBuyerId = useCallback(async () => {
     setResolvingBuyer(true);
     let found: number | null = null;
@@ -118,6 +118,12 @@ const ShippingList: React.FC = () => {
     setNotify('');
     if (!buyerId) resolveBuyerId();
     else fetchShippingByUser();
+  }
+
+  function isSuccessNotify(msg?: string) {
+    if (!msg) return false;
+    const s = msg.toString().toLowerCase();
+    return msg.includes('✔') || msg.includes('✅') || s.includes('thành công') || s.includes('đã cập nhật') || s.includes('success');
   }
 
   if (resolvingBuyer) {
@@ -460,7 +466,7 @@ const ShippingList: React.FC = () => {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: notify.includes('thành công') ? '#38b000' : '#f44336',
+          background: isSuccessNotify(notify) ? '#38b000' : '#f44336',
           color: '#fff',
           padding: '16px 24px',
           borderRadius: '8px',
@@ -471,7 +477,7 @@ const ShippingList: React.FC = () => {
           zIndex: 1000,
           animation: 'slideIn 0.3s ease'
         }}>
-          <span style={{ fontSize: '20px' }}>{notify.includes('thành công') ? '✔' : '✖'}</span>
+          <span style={{ fontSize: '20px' }}>{isSuccessNotify(notify) ? '✔' : '✖'}</span>
           <span style={{ fontWeight: '500' }}>{notify}</span>
         </div>
       )}
