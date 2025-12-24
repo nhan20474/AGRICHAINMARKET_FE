@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api/search';
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 export interface SearchParams {
     keyword?: string;
@@ -11,24 +11,29 @@ export interface SearchParams {
 
 export const searchService = {
     search: async (params: SearchParams) => {
-        // 1. Lọc bỏ các giá trị undefined/null để tạo query string sạch
-        const cleanParams: any = {};
-        Object.keys(params).forEach(key => {
-            const value = (params as any)[key];
-            if (value !== undefined && value !== null && value !== '') {
-                cleanParams[key] = value.toString();
-            }
-        });
+        try {
+            // 1. Lọc bỏ các giá trị undefined/null để tạo query string sạch
+            const cleanParams: any = {};
+            Object.keys(params).forEach(key => {
+                const value = (params as any)[key];
+                if (value !== undefined && value !== null && value !== '') {
+                    cleanParams[key] = value.toString();
+                }
+            });
 
-        // 2. Tạo query string (ví dụ: ?keyword=tao&minPrice=5000)
-        const queryString = new URLSearchParams(cleanParams).toString();
-        
-        // 3. Gọi API
-        const response = await fetch(`${API_URL}?${queryString}`);
-        
-        if (!response.ok) {
-            throw new Error('Lỗi tìm kiếm');
+            // 2. Tạo query string (ví dụ: ?keyword=tao&minPrice=5000)
+            const queryString = new URLSearchParams(cleanParams).toString();
+            
+            // 3. Gọi API
+            const response = await fetchWithTimeout(`${API_CONFIG.SEARCH}?${queryString}`);
+            
+            if (!response.ok) {
+                throw new Error('Lỗi tìm kiếm');
+            }
+            return response.json();
+        } catch (error) {
+            console.error('Search error:', error);
+            throw error;
         }
-        return response.json();
     }
 };

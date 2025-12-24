@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api/blockchain';
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 export interface TraceLog {
     action: string;
@@ -14,7 +14,7 @@ export const blockchainService = {
     // 1. Lấy lịch sử Blockchain của sản phẩm
     async getHistory(productId: number): Promise<TraceLog[]> {
         try {
-            const res = await fetch(`${API_URL}/${productId}`);
+            const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/blockchain/${productId}`);
             if (!res.ok) return [];
             return await res.json();
         } catch (error) {
@@ -31,28 +31,33 @@ export const blockchainService = {
         notes?: string;
         image_url?: string;
     }) {
-        // --- QUAN TRỌNG: MAP TÊN BIẾN CHO KHỚP BACKEND ---
-        // Backend đang đợi 'productId', nhưng Frontend đang dùng 'product_id'
-        const payload = {
-            productId: data.product_id, // Chuyển đổi ở đây
-            action: data.action,
-            location: data.location,
-            notes: data.notes,
-            image_url: data.image_url
-        };
+        try {
+            // --- QUAN TRỌNG: MAP TÊN BIẾN CHO KHỚP BACKEND ---
+            // Backend đang đợi 'productId', nhưng Frontend đang dùng 'product_id'
+            const payload = {
+                productId: data.product_id, // Chuyển đổi ở đây
+                action: data.action,
+                location: data.location,
+                notes: data.notes,
+                image_url: data.image_url
+            };
 
-        const res = await fetch(`${API_URL}/add-log`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload) // Gửi payload đã sửa tên
-        });
+            const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/blockchain/add-log`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload) // Gửi payload đã sửa tên
+            });
 
-        const result = await res.json();
+            const result = await res.json();
 
-        if (!res.ok) {
-            throw new Error(result.error || 'Ghi nhật ký thất bại');
+            if (!res.ok) {
+                throw new Error(result.error || 'Ghi nhật ký thất bại');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Add log error:', error);
+            throw error;
         }
-
-        return result; 
     }
 };

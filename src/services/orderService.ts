@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:3000/api/orders';
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
+import { safeGetItem } from '../utils/storageUtils';
 
 // --- 1. Constants & Helpers ---
 export const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -19,12 +20,12 @@ export const ADMIN_ORDER_ACTIONS = {
 
 export function getOrderStatusColor(status: string): string {
     const colors: Record<string, string> = {
-        pending: '#FF9800',     // Cam
-        processing: '#2196F3',  // Xanh dương
-        shipped: '#9C27B0',     // Tím
-        delivered: '#4CAF50',   // Xanh lá
-        received: '#388E3C',    // Xanh đậm
-        cancelled: '#F44336'    // Đỏ
+        pending: '#FF9800',
+        processing: '#2196F3',
+        shipped: '#9C27B0',
+        delivered: '#4CAF50',
+        received: '#388E3C',
+        cancelled: '#F44336'
     };
     return colors[status] || '#9E9E9E';
 }
@@ -33,8 +34,8 @@ export function getOrderStatusColor(status: string): string {
 export interface OrderItem {
     id?: number;
     product_id: number;
-    name: string;         // Tên sản phẩm (Lưu cứng lúc mua)
-    product_name?: string; // Tên sản phẩm (Join bảng)
+    name: string;
+    product_name?: string;
     image_url?: string;
     product_image_url?: string;
     quantity: number;
@@ -45,25 +46,20 @@ export interface OrderItem {
 export interface Order {
     id: number;
     buyer_id: number;
-    seller_id: number;       // Quan trọng để phân biệt đơn của ai
+    seller_id: number;
     total_amount: number;
-    
-    // Thông tin giảm giá
     discount_amount?: number;
     discount_code?: string;
-
     shipping_address: string;
     status: string;
     created_at: string;
-    
-    // Quan hệ
     items: OrderItem[];
-    buyer?: {               // Thông tin người mua (cho Farmer xem)
+    buyer?: {
         full_name: string;
         phone_number: string;
         address: string;
     };
-    payment?: {             // Thông tin thanh toán
+    payment?: {
         payment_method: string;
         payment_status: string;
     };
@@ -87,223 +83,274 @@ export interface AdminOrderDetail extends AdminOrder {
 // --- 3. Service Methods ---
 export const orderService = {
     
-    // 1. Tạo đơn hàng mới (Có hỗ trợ mã giảm giá)
+    // 1. Tạo đơn hàng mới
     async create(userId: number, data: { 
         shipping_address: string; 
         payment_method: string; 
-        discount_code?: string; // Optional
+        discount_code?: string;
         items?: any[] 
     }): Promise<{ message: string, order_id: number, orders: Order[] }> {
-        
-        const res = await fetch(`${API_BASE}/${userId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await res.json();
-        
-        if (!res.ok) {
-            throw new Error(result.error || 'Tạo đơn hàng thất bại');
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await res.json();
+            if (!res.ok) {
+                throw new Error(result.error || 'Tạo đơn hàng thất bại');
+            }
+            return result;
+        } catch (error) {
+            console.error('Order create error:', error);
+            throw error;
         }
-        return result;
     },
 
-    // 2. Lấy danh sách đơn hàng của User (Người mua)
+    // 2. Lấy danh sách đơn hàng của User
     async getByUser(userId: number): Promise<Order[]> {
-        const res = await fetch(`${API_BASE}/${userId}`);
-        if (!res.ok) throw new Error('Không thể lấy danh sách đơn hàng');
-        return await res.json();
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}/${userId}`);
+            if (!res.ok) throw new Error('Không thể lấy danh sách đơn hàng');
+            return await res.json();
+        } catch (error) {
+            console.error('Get orders error:', error);
+            throw error;
+        }
     },
 
     // 3. Lấy chi tiết đơn hàng
     async getDetail(orderId: number): Promise<{ order: Order, items: OrderItem[] }> {
-        const res = await fetch(`${API_BASE}/detail/${orderId}`);
-        if (!res.ok) throw new Error('Không thể lấy chi tiết đơn hàng');
-        return await res.json();
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}/detail/${orderId}`);
+            if (!res.ok) throw new Error('Không thể lấy chi tiết đơn hàng');
+            return await res.json();
+        } catch (error) {
+            console.error('Get order detail error:', error);
+            throw error;
+        }
     },
 
-    // 4. Lấy lịch sử mua hàng (Đã chuẩn hóa cấu trúc)
+    // 4. Lấy lịch sử mua hàng
     async getHistory(userId: number): Promise<Order[]> {
-        const res = await fetch(`${API_BASE}/history/${userId}`);
-        if (!res.ok) throw new Error('Không thể lấy lịch sử mua hàng');
-        
-        const data = await res.json();
-        
-        // Chuẩn hóa dữ liệu nếu Backend trả về dạng lồng nhau
-        if (Array.isArray(data) && data.length > 0 && data[0].order) {
-            return data.map((item: any) => ({
-                ...item.order,
-                items: item.items
-            }));
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}/history/${userId}`);
+            if (!res.ok) throw new Error('Không thể lấy lịch sử mua hàng');
+            
+            const data = await res.json();
+            
+            if (Array.isArray(data) && data.length > 0 && data[0].order) {
+                return data.map((item: any) => ({
+                    ...item.order,
+                    items: item.items
+                }));
+            }
+            return data;
+        } catch (error) {
+            console.error('Get order history error:', error);
+            throw error;
         }
-        return data;
     },
 
     // 5. Xóa đơn hàng (Hủy đơn)
     async remove(orderId: number): Promise<{ message: string }> {
-        const res = await fetch(`${API_BASE}/${orderId}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Xóa đơn hàng thất bại');
-        return await res.json();
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}/${orderId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Xóa đơn hàng thất bại');
+            return await res.json();
+        } catch (error) {
+            console.error('Remove order error:', error);
+            throw error;
+        }
     },
 
     // 6. Lấy tất cả đơn hàng (Admin)
     async getAll(): Promise<Order[]> {
-        const res = await fetch(`${API_BASE}`);
-        if (!res.ok) throw new Error('Không thể lấy danh sách tất cả đơn hàng');
-        return await res.json();
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}`);
+            if (!res.ok) throw new Error('Không thể lấy danh sách tất cả đơn hàng');
+            return await res.json();
+        } catch (error) {
+            console.error('Get all orders error:', error);
+            throw error;
+        }
     },
 
     // 7. Lấy đơn hàng theo Seller (Farmer Dashboard)
     async getBySeller(sellerId: number): Promise<Order[]> {
-        const res = await fetch(`${API_BASE}/by-seller/${sellerId}`);
-        if (!res.ok) throw new Error('Không thể lấy đơn hàng của nông dân');
-        return await res.json();
+        try {
+            const res = await fetchWithTimeout(`${API_CONFIG.ORDERS}/by-seller/${sellerId}`);
+            if (!res.ok) throw new Error('Không thể lấy đơn hàng của nông dân');
+            return await res.json();
+        } catch (error) {
+            console.error('Get seller orders error:', error);
+            throw error;
+        }
     },
 
-    // 8. Cập nhật trạng thái đơn hàng (Farmer/Admin)
-    // API Backend mới: PUT /api/orders/:orderId/product/:productId/status
-    // Hoặc PUT /api/orders/:orderId/status (Cho Admin/Buyer hủy)
+    // 8. Cập nhật trạng thái đơn hàng
     async updateStatus(
         orderId: number, 
         status: string, 
-        sellerId?: number, // Optional: Nếu là Farmer cập nhật
-        productId?: number // Optional: Nếu cập nhật từng món
+        sellerId?: number,
+        productId?: number
     ): Promise<any> {
-        
-        let url = `${API_BASE}/${orderId}/status`;
-        let body: any = { status };
+        try {
+            let url = `${API_CONFIG.ORDERS}/${orderId}/status`;
+            let body: any = { status };
 
-        // Nếu là Farmer cập nhật trạng thái món hàng
-        if (sellerId && productId) {
-            url = `${API_BASE}/${orderId}/product/${productId}/status`;
-            body.seller_id = sellerId;
-        } 
-        // Nếu là Buyer hủy đơn hoặc xác nhận nhận hàng
-        else if (status === 'cancelled' || status === 'received') {
-             // Có thể cần truyền buyer_id nếu backend yêu cầu xác thực chặt
+            if (sellerId && productId) {
+                url = `${API_CONFIG.ORDERS}/${orderId}/product/${productId}/status`;
+                body.seller_id = sellerId;
+            }
+
+            const res = await fetchWithTimeout(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Cập nhật trạng thái thất bại');
+            
+            return result;
+        } catch (error) {
+            console.error('Update order status error:', error);
+            throw error;
         }
-
-        const res = await fetch(url, {
-            method: 'PUT', // Backend dùng PUT
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Cập nhật trạng thái thất bại');
-        
-        return result;
     },
 
     // 9. Admin: Lấy danh sách đơn hàng
     async adminGetOrders(adminId: number, status?: string, limit?: number): Promise<Order[]> {
-        let url = `http://localhost:3000/api/admin/orders?admin_id=${adminId}`;
-        if (status) url += `&status=${status}`;
-        if (limit) url += `&limit=${limit}`; // Thêm tham số `limit` nếu được truyền vào
+        try {
+            const params = new URLSearchParams({ admin_id: String(adminId) });
+            if (status) params.append('status', status);
+            if (limit) params.append('limit', String(limit));
 
-        const token = localStorage.getItem('token'); // Lấy token từ localStorage
+            const token = safeGetItem('token');
 
-        if (!token) {
-            throw new Error('Không tìm thấy token. Vui lòng đăng nhập lại.');
-        }
-
-        const res = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`, // Gửi token trong header
-                'Content-Type': 'application/json'
+            if (!token) {
+                throw new Error('Không tìm thấy token. Vui lòng đăng nhập lại.');
             }
-        });
 
-        if (!res.ok) {
-            const text = await res.text();
-            console.error('Admin orders API error:', text);
-            throw new Error('Không thể tải đơn hàng (Admin)');
+            const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/admin/orders?${params.toString()}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                console.error('Admin orders API error:', text);
+                throw new Error('Không thể tải đơn hàng (Admin)');
+            }
+
+            return await res.json();
+        } catch (error) {
+            console.error('Admin get orders error:', error);
+            throw error;
         }
-
-        return await res.json();
     },
 
     // 10. Admin: Xem chi tiết đơn hàng
     async adminGetOrderDetail(
-    adminId: number,
-    orderId: number
+        adminId: number,
+        orderId: number
     ): Promise<{
-    order: AdminOrderDetail;
-    items: OrderItem[];
+        order: AdminOrderDetail;
+        items: OrderItem[];
     }> {
-    const res = await fetch(
-        `http://localhost:3000/api/admin/orders/${orderId}?admin_id=${adminId}`
-    );
+        try {
+            const res = await fetchWithTimeout(
+                `${API_CONFIG.BASE_URL}/admin/orders/${orderId}?admin_id=${adminId}`
+            );
 
-    const contentType = res.headers.get('content-type');
-        if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Không thể lấy chi tiết đơn hàng: ${text}`);
-        }
-        if (contentType && contentType.includes('application/json')) {
-        return await res.json();
-        } else {
-        const text = await res.text();
-        throw new Error(`Response không phải JSON: ${text}`);
+            const contentType = res.headers.get('content-type');
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Không thể lấy chi tiết đơn hàng: ${text}`);
+            }
+            if (contentType && contentType.includes('application/json')) {
+                return await res.json();
+            } else {
+                const text = await res.text();
+                throw new Error(`Response không phải JSON: ${text}`);
+            }
+        } catch (error) {
+            console.error('Admin get order detail error:', error);
+            throw error;
         }
     },
 
     // 11. Admin: Hủy đơn hàng
     async adminCancelOrder(
-    adminId: number,
-    orderId: number
+        adminId: number,
+        orderId: number
     ): Promise<{ message: string }> {
-    const res = await fetch(
-        `http://localhost:3000/api/admin/orders/${orderId}/cancel`,
-        {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_id: adminId })
+        try {
+            const res = await fetchWithTimeout(
+                `${API_CONFIG.BASE_URL}/admin/orders/${orderId}/cancel`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_id: adminId })
+                }
+            );
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Admin hủy đơn thất bại');
+
+            return result;
+        } catch (error) {
+            console.error('Admin cancel order error:', error);
+            throw error;
         }
-    );
-
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Admin hủy đơn thất bại');
-
-    return result;
     },
 
     // 12. Admin: Hủy 1 sản phẩm trong đơn
     async adminCancelOrderItem(
-    adminId: number,
-    orderItemId: number
+        adminId: number,
+        orderItemId: number
     ): Promise<{ message: string }> {
-    const res = await fetch(
-        `http://localhost:3000/api/admin/order-items/${orderItemId}/cancel`,
-        {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_id: adminId })
+        try {
+            const res = await fetchWithTimeout(
+                `${API_CONFIG.BASE_URL}/admin/order-items/${orderItemId}/cancel`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_id: adminId })
+                }
+            );
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Không thể hủy sản phẩm');
+
+            return result;
+        } catch (error) {
+            console.error('Admin cancel order item error:', error);
+            throw error;
         }
-    );
-
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Không thể hủy sản phẩm');
-
-    return result;
     },
 
     // 13. Admin: Thống kê đơn hàng
     async adminStatistics(adminId: number): Promise<{
-    total_orders: number;
-    success_orders: number;
-    cancelled_orders: number;
-    revenue: number;
+        total_orders: number;
+        success_orders: number;
+        cancelled_orders: number;
+        revenue: number;
     }> {
-    const res = await fetch(
-        `http://localhost:3000/api/admin/orders/statistics?admin_id=${adminId}`
-    );
+        try {
+            const res = await fetchWithTimeout(
+                `${API_CONFIG.BASE_URL}/admin/orders/statistics?admin_id=${adminId}`
+            );
 
-    if (!res.ok) throw new Error('Không thể lấy thống kê đơn hàng');
-    return await res.json();
-    },
-
-
-
+            if (!res.ok) throw new Error('Không thể lấy thống kê đơn hàng');
+            return await res.json();
+        } catch (error) {
+            console.error('Admin statistics error:', error);
+            throw error;
+        }
+    }
 };

@@ -1,19 +1,24 @@
-const API_UPLOAD_URL = 'http://localhost:3000/api/upload';
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 export const uploadService = {
   async uploadImage(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append('file', file);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const res = await fetch(API_UPLOAD_URL, {
-      method: 'POST',
-      body: formData
-    });
+      const res = await fetchWithTimeout(API_CONFIG.UPLOAD_URL, {
+        method: 'POST',
+        body: formData
+      });
 
-    const result = await res.json();
-    if (!res.ok || !result.url) {
-      throw new Error(result.message || 'Upload ảnh thất bại');
+      const result = await res.json();
+      if (!res.ok || !result.url) {
+        throw new Error(result.message || 'Upload ảnh thất bại');
+      }
+      return result.url;
+    } catch (error) {
+      console.error('Upload image error:', error);
+      throw error;
     }
-    return result.url;
   }
 };

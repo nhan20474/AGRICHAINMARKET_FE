@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000/api/cart';
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 export interface CartItem {
   id: number;           // cart_id
@@ -20,67 +20,92 @@ export const cartService = {
   
   // 1. Lấy giỏ hàng (Backend trả về { items: [], total: 0 })
   async getCart(userId: number): Promise<{ items: any[], total: number }> {
-    const res = await fetch(`${API_BASE_URL}/${userId}`);
-    if (!res.ok) throw new Error('Không thể lấy giỏ hàng');
-    return await res.json();
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/cart/${userId}`);
+      if (!res.ok) throw new Error('Không thể lấy giỏ hàng');
+      return await res.json();
+    } catch (error) {
+      console.error('Get cart error:', error);
+      throw error;
+    }
   },
 
   // 2. Thêm sản phẩm (Logic cộng dồn số lượng)
   async addItem(userId: number, item: { product_id: number; quantity: number }) {
-    const res = await fetch(`${API_BASE_URL}/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        user_id: userId, 
-        product_id: item.product_id, 
-        quantity: item.quantity 
-      }),
-    });
-    
-    if (!res.ok) {
-    const err = await res.json();
-    throw {
-      status: res.status,
-      message: err.error || 'Thêm sản phẩm thất bại'
-    };
-  }
-    return res.json();
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/cart/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: userId, 
+          product_id: item.product_id, 
+          quantity: item.quantity 
+        }),
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw {
+          status: res.status,
+          message: err.error || 'Thêm sản phẩm thất bại'
+        };
+      }
+      return res.json();
+    } catch (error) {
+      console.error('Add item error:', error);
+      throw error;
+    }
   },
 
   // 3. Cập nhật số lượng (Set chính xác số lượng mới)
   async updateItem(userId: number, productId: number, quantity: number) {
-    const res = await fetch(`${API_BASE_URL}/update`, {
-      method: 'PUT', // Backend dùng PUT cho update
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        user_id: userId, 
-        product_id: productId, 
-        quantity: quantity 
-      }),
-    });
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/cart/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: userId, 
+          product_id: productId, 
+          quantity: quantity 
+        }),
+      });
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Cập nhật số lượng thất bại');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Cập nhật số lượng thất bại');
+      }
+      return res.json();
+    } catch (error) {
+      console.error('Update item error:', error);
+      throw error;
     }
-    return res.json();
   },
 
   // 4. Xóa sản phẩm
   async removeItem(userId: number, productId: number) {
-    const res = await fetch(`${API_BASE_URL}/${userId}/${productId}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Xóa sản phẩm thất bại');
-    return res.json();
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/cart/${userId}/${productId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Xóa sản phẩm thất bại');
+      return res.json();
+    } catch (error) {
+      console.error('Remove item error:', error);
+      throw error;
+    }
   },
 
   // 5. Xóa toàn bộ giỏ (Làm trống)
   async clearCart(userId: number) {
-    const res = await fetch(`${API_BASE_URL}/${userId}/clear`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Xóa giỏ hàng thất bại');
-    return res.json();
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/cart/${userId}/clear`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Xóa giỏ hàng thất bại');
+      return res.json();
+    } catch (error) {
+      console.error('Clear cart error:', error);
+      throw error;
+    }
   },
 };

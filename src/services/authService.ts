@@ -27,14 +27,15 @@ interface AuthResponse {
   message?: string;
 }
 
-const API_BASE_URL = 'http://localhost:3000/api';
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
+import { safeSetJSON, safeGetJSON, safeSetItem, safeGetItem, safeRemoveItem } from '../utils/storageUtils';
 
 export const authService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
     try {
       console.log('Login request:', data);
       
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,10 +62,10 @@ export const authService = {
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
-      console.log('🚀 API Request URL:', `${API_BASE_URL}/auth/register`);
+      console.log('🚀 API Request URL:', `${API_CONFIG.AUTH}/register`);
       console.log('📦 Request Data:', JSON.stringify(data, null, 2));
       
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +109,7 @@ export const authService = {
 
   async getProfile(id: number): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/profile/${id}`);
+      const response = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/profile/${id}`);
       if (!response.ok) throw new Error('Không thể lấy thông tin người dùng');
       return await response.json();
     } catch (error) {
@@ -118,29 +119,34 @@ export const authService = {
   },
 
   changePassword: async (userId: number, oldPassword: string, newPassword: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        old_password: oldPassword,
-        new_password: newPassword
-      })
-    });
+    try {
+      const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          old_password: oldPassword,
+          new_password: newPassword
+        })
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Đổi mật khẩu thất bại');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Đổi mật khẩu thất bại');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Change password error:', error);
+      throw error;
     }
-
-    return response.json();
   },
 
   forgotPassword: async (email: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -167,7 +173,7 @@ export const authService = {
   // ✅ THÊM LẠI hàm resetPassword
   resetPassword: async (token: string, newPassword: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +207,7 @@ export const authService = {
    */
   async updateUser(id: string, data: { full_name: string; phone_number: string; address: string }): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/profile/${id}`, {
+      const response = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/profile/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

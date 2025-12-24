@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000/api/panels'; // Điều chỉnh port nếu cần
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 export interface Panel {
   id: number;
@@ -24,14 +24,24 @@ export const panelService = {
   
   // 1. Lấy tất cả Panel
   async getAll(): Promise<Panel[]> {
-    const res = await fetch(API_BASE_URL);
-    return handleResponse(res);
+    try {
+      const res = await fetchWithTimeout(API_CONFIG.PANELS);
+      return handleResponse(res);
+    } catch (error) {
+      console.error('Get all panels error:', error);
+      throw error;
+    }
   },
 
   // 2. Lấy chi tiết Panel
   async getById(id: number): Promise<Panel> {
-    const res = await fetch(`${API_BASE_URL}/${id}`);
-    return handleResponse(res);
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.PANELS}/${id}`);
+      return handleResponse(res);
+    } catch (error) {
+      console.error('Get panel error:', error);
+      throw error;
+    }
   },
 
   // 3. Tạo mới Panel (Có upload ảnh)
@@ -42,28 +52,33 @@ export const panelService = {
     content?: any;
     files?: File[]; 
   }): Promise<Panel> {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    if (data.description) formData.append('description', data.description);
-    formData.append('page', data.page);
-    
-    // Chuyển content object thành string để gửi qua FormData
-    if (data.content) {
-      formData.append('content', JSON.stringify(data.content));
-    }
+    try {
+      const formData = new FormData();
+      formData.append('name', data.name);
+      if (data.description) formData.append('description', data.description);
+      formData.append('page', data.page);
+      
+      // Chuyển content object thành string để gửi qua FormData
+      if (data.content) {
+        formData.append('content', JSON.stringify(data.content));
+      }
 
-    // Append file ảnh (nếu có)
-    if (data.files && data.files.length > 0) {
-      data.files.forEach((file) => {
-        formData.append('images', file);
+      // Append file ảnh (nếu có)
+      if (data.files && data.files.length > 0) {
+        data.files.forEach((file) => {
+          formData.append('images', file);
+        });
+      }
+
+      const res = await fetchWithTimeout(API_CONFIG.PANELS, {
+        method: 'POST',
+        body: formData, // Không cần set Content-Type, browser tự làm
       });
+      return handleResponse(res);
+    } catch (error) {
+      console.error('Create panel error:', error);
+      throw error;
     }
-
-    const res = await fetch(API_BASE_URL, {
-      method: 'POST',
-      body: formData, // Không cần set Content-Type, browser tự làm
-    });
-    return handleResponse(res);
   },
 
   // 4. Cập nhật Panel (Có upload ảnh mới & giữ ảnh cũ)
@@ -75,49 +90,64 @@ export const panelService = {
     old_images?: string[]; // Danh sách URL ảnh cũ muốn giữ lại
     new_files?: File[];    // Ảnh mới muốn thêm vào
   }): Promise<Panel> {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    if (data.description) formData.append('description', data.description);
-    formData.append('page', data.page);
+    try {
+      const formData = new FormData();
+      formData.append('name', data.name);
+      if (data.description) formData.append('description', data.description);
+      formData.append('page', data.page);
 
-    if (data.content) {
-      formData.append('content', JSON.stringify(data.content));
-    }
+      if (data.content) {
+        formData.append('content', JSON.stringify(data.content));
+      }
 
-    // Gửi danh sách ảnh cũ (Backend sẽ parse JSON string này)
-    if (data.old_images && data.old_images.length > 0) {
-      formData.append('old_images', JSON.stringify(data.old_images));
-    }
+      // Gửi danh sách ảnh cũ (Backend sẽ parse JSON string này)
+      if (data.old_images && data.old_images.length > 0) {
+        formData.append('old_images', JSON.stringify(data.old_images));
+      }
 
-    // Gửi ảnh mới
-    if (data.new_files && data.new_files.length > 0) {
-      data.new_files.forEach((file) => {
-        formData.append('images', file);
+      // Gửi ảnh mới
+      if (data.new_files && data.new_files.length > 0) {
+        data.new_files.forEach((file) => {
+          formData.append('images', file);
+        });
+      }
+
+      const res = await fetchWithTimeout(`${API_CONFIG.PANELS}/${id}`, {
+        method: 'PUT',
+        body: formData,
       });
+      return handleResponse(res);
+    } catch (error) {
+      console.error('Update panel error:', error);
+      throw error;
     }
-
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
-    return handleResponse(res);
   },
 
   // 5. Xóa Panel
   async remove(id: number): Promise<{ message: string }> {
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE',
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.PANELS}/${id}`, {
+        method: 'DELETE',
+      });
+      return handleResponse(res);
+    } catch (error) {
+      console.error('Remove panel error:', error);
+      throw error;
+    }
   },
 
   // 6. Xóa 1 ảnh lẻ trong Panel
   async removeImage(id: number, imageUrl: string): Promise<{ message: string; images: string[] }> {
-    const res = await fetch(`${API_BASE_URL}/${id}/image`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageUrl }),
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetchWithTimeout(`${API_CONFIG.PANELS}/${id}/image`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl }),
+      });
+      return handleResponse(res);
+    } catch (error) {
+      console.error('Remove image error:', error);
+      throw error;
+    }
   },
 };

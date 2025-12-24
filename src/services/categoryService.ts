@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api/categories'; 
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 export interface Category {
     id: number;
@@ -8,10 +8,15 @@ export interface Category {
 
 export const categoryService = {
     getAll: async (): Promise<Category[]> => {
-        const response = await fetch(API_URL);
-        if (!response.ok) {
-            throw new Error('Lỗi tải danh mục');
+        try {
+            const response = await fetchWithTimeout(API_CONFIG.CATEGORIES);
+            if (!response.ok) {
+                throw new Error('Lỗi tải danh mục');
+            }
+            return response.json();
+        } catch (error) {
+            console.error('Get categories error:', error);
+            throw error;
         }
-        return response.json();
     }
 };

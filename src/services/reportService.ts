@@ -1,40 +1,45 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const API_URL = 'http://localhost:3000/api/reports'; // Đổi lại port của bạn nếu khác
+import { API_CONFIG, fetchWithTimeout } from '../config/apiConfig';
 
 // ==========================================
 // HELPER FUNCTION (Thay thế Axios)
 // ==========================================
 async function get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
-  // 1. Xử lý Query String bằng URLSearchParams
-  const url = new URL(`${API_URL}${endpoint}`);
-  
-  if (params) {
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null) {
-        url.searchParams.append(key, String(params[key]));
-      }
+  try {
+    // 1. Xử lý Query String bằng URLSearchParams
+    const url = new URL(`${API_CONFIG.REPORTS}${endpoint}`);
+    
+    if (params) {
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          url.searchParams.append(key, String(params[key]));
+        }
+      });
+    }
+
+    // 2. Gọi Fetch
+    const response = await fetchWithTimeout(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${token}` // Thêm token nếu cần
+      },
     });
+
+    // 3. Xử lý lỗi HTTP (Fetch không tự throw lỗi khi gặp 4xx, 5xx)
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || `HTTP error! status: ${response.status}`);
+    }
+
+    // 4. Trả về JSON
+    return await response.json();
+  } catch (error) {
+    console.error('Get request error:', error);
+    throw error;
   }
-
-  // 2. Gọi Fetch
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      // 'Authorization': `Bearer ${token}` // Thêm token nếu cần
-    },
-  });
-
-  // 3. Xử lý lỗi HTTP (Fetch không tự throw lỗi khi gặp 4xx, 5xx)
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.message || `HTTP error! status: ${response.status}`);
-  }
-
-  // 4. Trả về JSON
-  return await response.json();
 }
 
 // ==========================================

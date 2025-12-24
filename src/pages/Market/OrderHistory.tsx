@@ -3,6 +3,9 @@ import { ORDER_STATUS_LABELS, getOrderStatusColor } from '../../services/orderSe
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 
+// ✅ FIX: Tạo constant cho API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 // Định nghĩa kiểu dữ liệu đơn hàng và sản phẩm trong đơn
 interface OrderItem {
     product_id: number;
@@ -19,8 +22,6 @@ interface Order {
     status: string;
     shipping_address?: string;
     items: OrderItem[];
-    discount_amount?: number; // tổng số tiền giảm giá
-    original_amount?: number; // tổng tiền gốc trước giảm giá
 }
 
 function getUserId() {
@@ -42,6 +43,7 @@ const OrderHistory: React.FC = () => {
     const [error, setError] = useState('');
     const [showReviewForm, setShowReviewForm] = useState<{[key: string]: boolean}>({});
     const [filterStatus, setFilterStatus] = useState('all');
+    const [isSubmitting, setIsSubmitting] = useState(false); // ✅ FIX: Prevent double-click
 
     // ✅ Hàm fetch orders (tách ra để tái sử dụng)
     const fetchOrders = async () => {
@@ -52,7 +54,7 @@ const OrderHistory: React.FC = () => {
         }
         
         try {
-            const res = await fetch(`http://localhost:3000/api/orders/history/${userId}`);
+            const res = await fetch(`${API_BASE_URL}/orders/history/${userId}`);
             const data = await res.json();
             
             const ordersMap = new Map<number, Order>();
@@ -61,6 +63,7 @@ const OrderHistory: React.FC = () => {
                 data.forEach((row: any) => {
                     const orderId = row.order?.id;
                     if (!orderId) return;
+                    
                     if (!ordersMap.has(orderId)) {
                         ordersMap.set(orderId, {
                             id: orderId,
@@ -68,11 +71,10 @@ const OrderHistory: React.FC = () => {
                             total_amount: row.order?.total_amount,
                             status: row.order?.status,
                             shipping_address: row.order?.shipping_address,
-                            items: [],
-                            discount_amount: row.order?.discount_amount || 0,
-                            original_amount: row.order?.original_amount || null
+                            items: []
                         });
                     }
+                    
                     const order = ordersMap.get(orderId)!;
                     if (Array.isArray(row.items)) {
                         row.items.forEach((item: any) => {
@@ -81,7 +83,7 @@ const OrderHistory: React.FC = () => {
                                 order.items.push({
                                     product_id: item.product_id,
                                     name: item.name,
-                                    quantity: item.quantity,
+quantity: item.quantity,
                                     price_per_item: item.price_per_item,
                                     image_url: item.image_url
                                 });
@@ -107,10 +109,14 @@ const OrderHistory: React.FC = () => {
     // ✅ GIỮ NGUYÊN: Buyer dùng API PUT /api/orders/:orderId/status
     const handleConfirmReceived = async (orderId: number) => {
         if (!window.confirm('Xác nhận bạn đã nhận được hàng?')) return;
+        
+        // ✅ FIX: Prevent double-click
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
             // ✅ ĐÚNG: Gọi API shipping route
-            const res = await fetch(`http://localhost:3000/api/shipping/${orderId}/status`, {
+            const res = await fetch(`${API_BASE_URL}/shipping/${orderId}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'received' })
@@ -126,29 +132,35 @@ const OrderHistory: React.FC = () => {
         } catch (err) {
             console.error('❌ Error:', err);
             alert('Không thể kết nối đến server');
+        } finally {
+            setIsSubmitting(false); // ✅ FIX: Re-enable button
         }
     };
 
     useEffect(() => {
         fetchOrders();
 
-        // ✅ SOCKET: Lắng nghe cập nhật trạng thái đơn hàng realtime
-        let socket: any;
-        if (userId) {
-            socket = io('http://localhost:3000');
-            socket.emit('register', userId);
+    // ✅ Lắng nghe cập nhật trạng thái đơn hàng realtime
+    let socket: any;
+    if (userId) {
+        socket = io('http://localhost:3000');
+        socket.emit('register', userId);
+        
+        // Khi nhận thông báo cập nhật đơn hàng
+        socket.on('notification', (data: any) => {
+            console.log('🔔 Nhận thông báo:', data);
             
-            // Khi nhận thông báo cập nhật đơn hàng
-            socket.on('notification', (data: any) => {
-                console.log('🔔 Nhận thông báo:', data);
-                
-                // Nếu là thông báo về đơn hàng, reload orders
-                if (data.type === 'order_tracking' && data.order_id) {
-                    console.log('📦 Cập nhật đơn hàng #', data.order_id);
-                    fetchOrders(); // Reload danh sách
-                }
-            });
-        }
+            // ✅ FIX: Chỉ cập nhật đơn hàng cụ thể thay vì reload all
+            if (data.type === 'order_tracking' && data.order_id) {
+                console.log('📦 Cập nhật đơn hàng #', data.order_id);
+                setOrders(prev => prev.map(order => 
+                    order.id === data.order_id 
+                        ? { ...order, status: data.new_status || order.status }
+                        : order
+                ));
+            }
+        });
+    }
 
         return () => {
             if (socket) socket.disconnect();
@@ -162,9 +174,13 @@ const OrderHistory: React.FC = () => {
 
     // ✅ THÊM: Hàm kiểm tra sản phẩm còn tồn tại trước khi đánh giá
     const handleReviewProduct = async (productId: number, productName: string) => {
+        // ✅ FIX: Prevent double-click
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        
         try {
             // Kiểm tra sản phẩm có còn tồn tại không
-            const res = await fetch(`http://localhost:3000/api/products/${productId}`);
+            const res = await fetch(`${API_BASE_URL}/products/${productId}`);
             
             if (!res.ok) {
                 if (res.status === 404) {
@@ -190,6 +206,8 @@ const OrderHistory: React.FC = () => {
         } catch (error) {
             console.error('❌ Check product error:', error);
             alert('❌ Không thể kiểm tra sản phẩm. Vui lòng thử lại sau.');
+        } finally {
+            setIsSubmitting(false); // ✅ FIX: Re-enable button
         }
     };
 
@@ -225,7 +243,7 @@ const OrderHistory: React.FC = () => {
             )}
             {!loading && !error && filteredOrders.length > 0 && (
                 <div className="order-history-page">
-                    {filteredOrders.map((order, orderIndex) => (
+{filteredOrders.map((order, orderIndex) => (
                         <div key={`order-${order.id || orderIndex}`} style={{ 
                             marginBottom: 32,
                             padding: 16,
@@ -273,14 +291,14 @@ const OrderHistory: React.FC = () => {
                             {/* Danh sách sản phẩm */}
                             {order.items && order.items.length > 0 ? (
                                 order.items.map((item, idx) => (
-                                    <div key={`${order.id}-${item.product_id}-${idx}`} style={{ 
-                                        display: 'flex',
+                                    <div key={`${order.id}-${item.product_id}-${idx}`} style={{
+display: 'flex',
                                         padding: '12px 0',
                                         borderBottom: '1px solid #eee',
                                         alignItems: 'center'
                                     }}>
                                         <img 
-                                            src={item.image_url ? `http://localhost:3000${item.image_url}` : '/img/default.jpg'} 
+                                            src={item.image_url ? `${API_BASE_URL}${item.image_url}` : '/img/default.jpg'} 
                                             alt={item.name} 
                                             style={{ 
                                                 width: 60, 
@@ -293,16 +311,7 @@ const OrderHistory: React.FC = () => {
                                         <div style={{flex: 1, marginLeft: 12}}>
                                             <strong style={{ fontSize: 15, color: '#333' }}>{item.name}</strong>
                                             <div style={{ fontSize: 14, color: '#666', marginTop: 4 }}>
-                                                Số lượng: <strong>{item.quantity}</strong> × {
-                                                    (() => {
-                                                        // DEBUG: log giá trị để kiểm tra
-                                                        // console.log('item.price_per_item', item.price_per_item, typeof item.price_per_item);
-                                                        const n = typeof item.price_per_item === 'number'
-                                                            ? item.price_per_item
-                                                            : parseFloat(item.price_per_item || '0');
-                                                        return n.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-                                                    })()
-                                                }đ
+                                                Số lượng: <strong>{item.quantity}</strong> × {Number(item.price_per_item).toLocaleString('vi-VN')}đ
                                             </div>
                                         </div>
                                         
@@ -320,7 +329,8 @@ const OrderHistory: React.FC = () => {
                                             <strong style={{ color: '#38b000' }}>
                                                 {ORDER_STATUS_LABELS[order.status]}
                                             </strong>
-                                            {['pending', 'processing', 'shipped', 'delivered', 'received'].map((s, idx) => {
+                                            {/* ✅ FIX: Xử lý status "cancelled" */}
+                                            {order.status !== 'cancelled' && ['pending', 'processing', 'shipped', 'delivered', 'received'].map((s, idx) => {
                                                 const isActive = ['pending', 'processing', 'shipped', 'delivered', 'received'].indexOf(order.status) >= idx;
                                                 const isCurrent = order.status === s;
                                                 return (
@@ -365,7 +375,7 @@ const OrderHistory: React.FC = () => {
                                 ))
                             ) : (
                                 <div style={{color:'#888', padding:12}}>Không có sản phẩm trong đơn hàng này.</div>
-                            )}
+)}
 
                             {/* Tổng tiền */}
                             <div style={{
@@ -383,30 +393,36 @@ const OrderHistory: React.FC = () => {
                                     {order.status === 'delivered' && (
                                         <button
                                             onClick={() => handleConfirmReceived(order.id)}
+                                            disabled={isSubmitting}
                                             style={{
-                                                background: '#38b000',
+                                                background: isSubmitting ? '#ccc' : '#38b000',
                                                 color: '#fff',
                                                 border: 'none',
                                                 padding: '10px 20px',
                                                 borderRadius: 6,
-                                                cursor: 'pointer',
+                                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
                                                 fontSize: 14,
                                                 fontWeight: 600,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 8,
-                                                transition: 'all 0.3s'
+                                                transition: 'all 0.3s',
+                                                opacity: isSubmitting ? 0.7 : 1
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = '#2d8f00';
-                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                if (!isSubmitting) {
+                                                    e.currentTarget.style.background = '#2d8f00';
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                }
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = '#38b000';
-                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                if (!isSubmitting) {
+                                                    e.currentTarget.style.background = '#38b000';
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                }
                                             }}
                                         >
-                                            ✅ Đã nhận hàng
+                                            {isSubmitting ? '⏳ Đang xử lý...' : '✅ Đã nhận hàng'}
                                         </button>
                                     )}
 
@@ -421,93 +437,51 @@ const OrderHistory: React.FC = () => {
                                                     <button
                                                         key={`${order.id}-${item.product_id}-${idx}`}
                                                         onClick={() => handleReviewProduct(item.product_id, item.name)}
+                                                        disabled={isSubmitting}
                                                         style={{
-                                                            background: 'linear-gradient(135deg, #FF6B35 0%, #ff5722 100%)',
+                                                            background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #FF6B35 0%, #ff5722 100%)',
                                                             color: '#fff',
                                                             border: 'none',
                                                             padding: '8px 16px',
                                                             borderRadius: 6,
-                                                            cursor: 'pointer',
+                                                            cursor: isSubmitting ? 'not-allowed' : 'pointer',
                                                             fontSize: 13,
                                                             fontWeight: 600,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             gap: 6,
                                                             transition: 'all 0.3s',
-                                                            boxShadow: '0 2px 8px rgba(255,107,53,0.3)'
+                                                            boxShadow: isSubmitting ? 'none' : '0 2px 8px rgba(255,107,53,0.3)',
+                                                            opacity: isSubmitting ? 0.7 : 1
                                                         }}
                                                         onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #ff5722 0%, #f4511e 100%)';
-                                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,107,53,0.4)';
+                                                            if (!isSubmitting) {
+                                                                e.currentTarget.style.background = 'linear-gradient(135deg, #ff5722 0%, #f4511e 100%)';
+                                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,107,53,0.4)';
+                                                            }
                                                         }}
                                                         onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FF6B35 0%, #ff5722 100%)';
-                                                            e.currentTarget.style.transform = 'translateY(0)';
-                                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(255,107,53,0.3)';
+                                                            if (!isSubmitting) {
+                                                                e.currentTarget.style.background = 'linear-gradient(135deg, #FF6B35 0%, #ff5722 100%)';
+                                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(255,107,53,0.3)';
+                                                            }
                                                         }}
                                                         title={`Đánh giá: ${item.name}`}
                                                     >
-                                                        ⭐ {item.name.substring(0, 15)}{item.name.length > 15 ? '...' : ''}
+                                                        {isSubmitting ? '⏳' : '⭐'} {item.name.substring(0, 15)}{item.name.length > 15 ? '...' : ''}
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
                                     )}
                                 </div>
-                                <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
-                                    {/* Nút Chi tiết */}
-                                    <button
-                                        onClick={() => navigate(`/shipping-list?orderId=${order.id}`)}
-                                        style={{
-                                            background: '#4CAF50',
-                                            color: '#fff',
-                                            border: 'none',
-                                            padding: '10px 20px',
-                                            borderRadius: 6,
-                                            cursor: 'pointer',
-                                            fontSize: 14,
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8,
-                                            transition: 'all 0.3s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#45a049';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#4CAF50';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                    >
-                                        📦 Chi tiết vận chuyển
-                                    </button>
-                                    
-                                    {/* Tổng tiền */}
-                                    <div style={{textAlign: 'right'}}>
-                                        {/* Hiển thị tổng tiền gốc nếu có giảm giá */}
-                                        {order.discount_amount && Number(order.discount_amount) > 0 ? (
-                                            <>
-                                                <div style={{fontSize: 15, color: '#888', textDecoration: 'line-through'}}>
-                                                    Tổng tiền hàng: {order.original_amount && Number(order.original_amount) > 0
-                                                        ? Number(order.original_amount).toLocaleString('vi-VN')
-                                                        : (Number(order.total_amount) + Number(order.discount_amount)).toLocaleString('vi-VN')
-                                                    }đ
-                                                </div>
-                                                <div style={{fontSize: 15, color: '#4caf50'}}>
-                                                    Giảm giá: -{Number(order.discount_amount).toLocaleString('vi-VN')}đ
-                                                </div>
-                                            </>
-                                        ) : null}
-                                        <span style={{fontSize: 16, color: '#666'}}>Tổng cộng: </span>
-                                        <strong style={{fontSize: 20, color: '#38b000'}}>
-                                            {Number(order.total_amount).toLocaleString('vi-VN')}đ
-                                        </strong>
-                                    </div>
+                                <div style={{textAlign: 'right'}}>
+                                    <span style={{fontSize: 16, color: '#666'}}>Tổng cộng: </span>
+                                    <strong style={{fontSize: 20, color: '#38b000'}}>
+                                        {Number(order.total_amount).toLocaleString('vi-VN')}đ
+                                    </strong>
                                 </div>
                             </div>
                         </div>
