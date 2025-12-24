@@ -61,40 +61,90 @@ export interface AdminDashboardStats {
 
 export interface SalesTrendItem {
   label: string;
-  total_orders: string | number; 
-  total_revenue: string | number;
-  total_quantity?: string | number; 
+  total_orders: number;
+  total_revenue: number;
+  total_quantity?: number;
 }
 
 export interface TopProductItem {
   product_id: number;
-  total_sold: string | number;
-  revenue: string | number;
+  name: string;
+  image_url: string;
+  price: number;
+  total_sold: number;
+  revenue: number;
+  order_count: number;
 }
 
 export interface FarmerAllTimeStats {
-  total_orders: string | number;
-  total_quantity: string | number;
-  total_revenue: string | number;
-  total_discount: string | number;
-  average_order_value: string | number;
-  pending_orders: string | number;
-  cancelled_orders: string | number;
+  total_orders: number;
+  total_revenue: number;
+  total_discount: number;
+  average_order_value: number;
+  pending_orders: number;
+  cancelled_orders: number;
+  completed_orders: number;
 }
 
-// Các interface phản hồi từ Server (dựa trên res.json của backend)
+export interface SyncReportRequest {
+  date?: string; // YYYY-MM-DD format
+}
+
+export interface SyncReportResponse {
+  success: boolean;
+  message: string;
+  data: {
+    date: string;
+    sellers_updated: number;
+    admin_updated: number;
+  };
+}
+
+// Các interface phản hồi từ Server
 interface TrendResponse {
   success: boolean;
   trend: SalesTrendItem[];
 }
+
 interface TopProductResponse {
   success: boolean;
   top_products: TopProductItem[];
 }
+
 interface FarmerStatsResponse {
   success: boolean;
   seller_id: number;
   data: FarmerAllTimeStats;
+}
+
+// ==========================================
+// HELPER FUNCTION POST (Thay thế Axios)
+// ==========================================
+async function post<T>(
+  endpoint: string,
+  body?: Record<string, any>
+): Promise<T> {
+  try {
+    const url = `${API_CONFIG.REPORTS}${endpoint}`;
+    
+    const response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Post request error:', error);
+    throw error;
+  }
 }
 
 // ==========================================
@@ -107,60 +157,117 @@ export const ReportService = {
 
   /**
    * GET /api/reports/admin/dashboard
+   * Lấy overview dashboard (revenue, orders, users, products)
    */
   getAdminDashboard: async (): Promise<AdminDashboardStats> => {
-    // Backend trả về trực tiếp object, không có wrapper { success: true }
-    return await get<AdminDashboardStats>('/admin/dashboard');
+    try {
+      return await get<AdminDashboardStats>('/admin/dashboard');
+    } catch (error) {
+      console.error('Failed to get admin dashboard:', error);
+      throw error;
+    }
   },
 
   /**
    * GET /api/reports/admin/trend
+   * Lấy sales trend theo ngày hoặc tháng
    */
   getAdminTrend: async (
-    type: 'daily' | 'monthly', 
-    from?: string, 
+    type: 'daily' | 'monthly' = 'daily',
+    from?: string,
     to?: string
   ): Promise<SalesTrendItem[]> => {
-    const data = await get<TrendResponse>('/admin/trend', { type, from, to });
-    return data.trend;
+    try {
+      const data = await get<TrendResponse>('/admin/trend', { type, from, to });
+      return data.trend;
+    } catch (error) {
+      console.error('Failed to get admin trend:', error);
+      throw error;
+    }
   },
 
   /**
    * GET /api/reports/admin/top-products
+   * Lấy top products bán chạy nhất
    */
   getAdminTopProducts: async (limit: number = 5): Promise<TopProductItem[]> => {
-    const data = await get<TopProductResponse>('/admin/top-products', { limit });
-    return data.top_products;
+    try {
+      const data = await get<TopProductResponse>('/admin/top-products', { limit });
+      return data.top_products;
+    } catch (error) {
+      console.error('Failed to get admin top products:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * POST /api/reports/sync
+   * Đồng bộ report data (cache builder)
+   */
+  syncReports: async (date?: string): Promise<SyncReportResponse> => {
+    try {
+      return await post<SyncReportResponse>('/sync', { date });
+    } catch (error) {
+      console.error('Failed to sync reports:', error);
+      throw error;
+    }
   },
 
   // --- FARMER ---
 
   /**
    * GET /api/reports/farmer/:sellerId/all-time
+   * Lấy thống kê tổng thể của farmer
    */
   getFarmerAllTimeStats: async (sellerId: number): Promise<FarmerAllTimeStats> => {
-    const data = await get<FarmerStatsResponse>(`/farmer/${sellerId}/all-time`);
-    return data.data;
+    try {
+      if (!sellerId || isNaN(sellerId)) {
+        throw new Error('Invalid sellerId');
+      }
+      const data = await get<FarmerStatsResponse>(`/farmer/${sellerId}/all-time`);
+      return data.data;
+    } catch (error) {
+      console.error('Failed to get farmer all-time stats:', error);
+      throw error;
+    }
   },
 
   /**
    * GET /api/reports/farmer/:sellerId/trend
+   * Lấy sales trend của farmer
    */
   getFarmerTrend: async (
     sellerId: number,
-    type: 'daily' | 'monthly',
+    type: 'daily' | 'monthly' = 'daily',
     from?: string,
     to?: string
   ): Promise<SalesTrendItem[]> => {
-    const data = await get<TrendResponse>(`/farmer/${sellerId}/trend`, { type, from, to });
-    return data.trend;
+    try {
+      if (!sellerId || isNaN(sellerId)) {
+        throw new Error('Invalid sellerId');
+      }
+      const data = await get<TrendResponse>(`/farmer/${sellerId}/trend`, { type, from, to });
+      return data.trend;
+    } catch (error) {
+      console.error('Failed to get farmer trend:', error);
+      throw error;
+    }
   },
 
   /**
    * GET /api/reports/farmer/:sellerId/top-products
+   * Lấy top products của farmer
    */
   getFarmerTopProducts: async (sellerId: number, limit: number = 5): Promise<TopProductItem[]> => {
-    const data = await get<TopProductResponse>(`/farmer/${sellerId}/top-products`, { limit });
-    return data.top_products;
+    try {
+      if (!sellerId || isNaN(sellerId)) {
+        throw new Error('Invalid sellerId');
+      }
+      const data = await get<TopProductResponse>(`/farmer/${sellerId}/top-products`, { limit });
+      return data.top_products;
+    } catch (error) {
+      console.error('Failed to get farmer top products:', error);
+      throw error;
+    }
   }
 };

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { ReportService, SalesTrendItem, TopProductItem } from '../../services/reportService';
 import SimpleBarChart from '../../components/SimpleBarChart';
+import { getUserId } from '../../utils/storageUtils';
 import '../../styles/FarmerReports.css';
 
 interface FarmerReportsProps {
@@ -17,6 +18,7 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
     const [chartData, setChartData] = useState<SalesTrendItem[]>([]);
     const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     
     // Quản lý thời gian filter
     const [dateRange, setDateRange] = useState({
@@ -28,13 +30,9 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
     // --- EFFECT: Lấy SellerID nếu không truyền props ---
     useEffect(() => {
         if (!propSellerId) {
-            const userStr = localStorage.getItem('user');
-            if (userStr) {
-                try {
-                    setSellerId(Number(JSON.parse(userStr).id));
-                } catch (e) {
-                    console.error("Lỗi parse user:", e);
-                }
+            const id = getUserId();
+            if (id) {
+                setSellerId(id);
             }
         } else {
             setSellerId(propSellerId);
@@ -73,17 +71,18 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
     const loadReportData = useCallback(async () => {
         if (!sellerId) return;
         setLoading(true);
+        setError(null);
         try {
-            // Gọi song song 2 API: Biểu đồ & Top sản phẩm
             const [trendRes, topProdRes] = await Promise.all([
                 ReportService.getFarmerTrend(sellerId, 'daily', dateRange.from, dateRange.to),
-                ReportService.getFarmerTopProducts(sellerId, 5) // Lấy top 5 sản phẩm
+                ReportService.getFarmerTopProducts(sellerId, 5)
             ]);
-            
-            setChartData(trendRes);
-            setTopProducts(topProdRes);
+            setChartData(trendRes || []);
+            setTopProducts(topProdRes || []);
         } catch (e) {
-            console.error("Lỗi tải báo cáo:", e);
+            const errorMsg = e instanceof Error ? e.message : 'Không thể tải báo cáo';
+            setError(errorMsg);
+            console.error('❌ Lỗi tải báo cáo:', e);
         } finally {
             setLoading(false);
         }
@@ -102,6 +101,21 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
 
         return { revenue, orders, quantity, avgOrderValue };
     }, [chartData]);
+
+    if (error) {
+        return (
+            <div className="fr-container fade-in">
+                <div className="fr-error-banner">
+                    <span className="fr-error-icon">⚠️</span>
+                    <div>
+                        <h3>Không thể tải dữ liệu</h3>
+                        <p>{error}</p>
+                    </div>
+                    <button onClick={() => loadReportData()} className="fr-btn-retry">Thử lại</button>
+                </div>
+            </div>
+        );
+    }
 
     if (!sellerId) return <div className="empty-state-modern">Vui lòng đăng nhập để xem báo cáo.</div>;
 
@@ -149,7 +163,7 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
             {/* 2. SUMMARY CARDS */}
             <div className="fr-summary-grid">
                 <ModernStatCard 
-                    title="Tổng Doanh Thu" 
+                    title="Tổng Doanh Thu theo khoảng thời gian" 
                     value={summary.revenue} 
                     isCurrency 
                     icon={<DollarSign size={24} />} 
@@ -193,11 +207,14 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
                             <div className="fr-empty">Không có dữ liệu trong khoảng thời gian này</div>
                         ) : (
                             <SimpleBarChart
-                                data={chartData.map(d => ({
-                                    label: d.label.split('-').slice(1).join('/'), // Format ngày MM/DD cho gọn
-                                    value: Number(d.total_revenue),
-                                    tooltip: `${d.label}: ${Number(d.total_revenue).toLocaleString('vi-VN')}đ`
-                                }))}
+                                data={chartData.map(d => {
+                                    const revenue = typeof d.total_revenue === 'string' ? parseFloat(d.total_revenue) : d.total_revenue;
+                                    return {
+                                        label: d.label.split('-').slice(1).join('/'),
+                                        value: revenue,
+                                        tooltip: `${d.label}: ${revenue.toLocaleString('vi-VN')}đ`
+                                    };
+                                })}
                                 color="#10B981" // Emerald 500
                             />
                         )}
@@ -215,18 +232,22 @@ const FarmerReports: React.FC<FarmerReportsProps> = ({ sellerId: propSellerId })
                         ) : topProducts.length === 0 ? (
                             <div className="fr-empty-mini">Chưa có sản phẩm nào bán được.</div>
                         ) : (
-                            topProducts.map((prod, idx) => (
-                                <div key={prod.product_id} className="fr-product-item">
-                                    <div className="fr-prod-rank">{idx + 1}</div>
-                                    <div className="fr-prod-info">
-                                        <span className="fr-prod-name">Sản phẩm #{prod.product_id}</span>
-                                        <span className="fr-prod-sales">{Number(prod.total_sold)} đã bán</span>
+                            topProducts.map((prod, idx) => {
+                                const sold = typeof prod.total_sold === 'string' ? parseInt(prod.total_sold) : prod.total_sold;
+                                const revenue = typeof prod.revenue === 'string' ? parseFloat(prod.revenue) : prod.revenue;
+                                return (
+                                    <div key={prod.product_id} className="fr-product-item">
+                                        <div className="fr-prod-rank">{idx + 1}</div>
+                                        <div className="fr-prod-info">
+                                            <span className="fr-prod-name">{prod.name || `Sản phẩm #${prod.product_id}`}</span>
+                                            <span className="fr-prod-sales">{sold} đã bán</span>
+                                        </div>
+                                        <div className="fr-prod-revenue">
+                                            {revenue.toLocaleString('vi-VN')}đ
+                                        </div>
                                     </div>
-                                    <div className="fr-prod-revenue">
-                                        {Number(prod.revenue).toLocaleString('vi-VN')}đ
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                     <div className="fr-card-footer">

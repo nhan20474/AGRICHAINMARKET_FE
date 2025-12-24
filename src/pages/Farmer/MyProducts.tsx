@@ -3,7 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Search, LogOut, User, BarChart, ShoppingCart, Package, Layers, Settings, Zap, Star, ChevronDown, DollarSign, TrendingUp, AlertTriangle, ArrowRight, PlusCircle } from 'lucide-react';
 import '../../styles/MyProduct.css';
 import { useNavigate } from 'react-router-dom';
-import { ORDER_STATUS_LABELS } from '../../services/orderService';
+import { ORDER_STATUS_LABELS, orderService } from '../../services/orderService';
+import { ReportService } from '../../services/reportService';
+import { productService } from '../../services/productService';
+import { getUserId } from '../../utils/storageUtils';
 
 // --- IMPORT CÁC MODULE CHỨC NĂNG ---
 import ProductManagementSection from './ProductManagementSection'; 
@@ -98,43 +101,34 @@ const FarmerOverviewSection: React.FC<{ sellerId: number, onNavigate: (key: stri
 
         const fetchOverviewData = async () => {
             try {
-                // 1. Lấy Thống kê tổng quan (Doanh thu, số lượng đơn)
-            const statsRes = await fetch(`http://localhost:3000/api/reports/farmer/${sellerId}/all-time`);
-            
-            if (!statsRes.ok) throw new Error('Failed to fetch stats');
-            
-            const statsData = await statsRes.json();
-            
-            // Backend trả về: { success: true, data: { total_revenue, pending_orders, total_orders... } }
-            // Cần map vào state của Frontend
-            if (statsData.success && statsData.data) {
+                // 1. Lấy Thống kê tổng quan (Doanh thu, số lượng đơn) qua ReportService
+                const statsResp = await ReportService.getFarmerAllTimeStats(sellerId);
                 setStats(prev => ({
                     ...prev,
-                    revenue: Number(statsData.data.total_revenue),
-                    pending_orders: Number(statsData.data.pending_orders),
-                    completed_orders: Number(statsData.data.total_orders) 
+                    revenue: Number(statsResp.total_revenue || 0),
+                    pending_orders: Number(statsResp.pending_orders || 0),
+                    completed_orders: Number(statsResp.completed_orders || 0)
                 }));
-            }
 
-                // 2. Lấy Đơn hàng gần đây (Lấy 5 đơn mới nhất)
-                const ordersRes = await fetch(`http://localhost:3000/api/orders/by-seller/${sellerId}`);
-                const ordersData = await ordersRes.json();
-                if (Array.isArray(ordersData)) {
-                    setRecentOrders(ordersData.slice(0, 5)); // Lấy top 5
+                // 2. Lấy Đơn hàng gần đây (Lấy 5 đơn mới nhất) qua orderService
+                try {
+                    const ordersData = await orderService.getBySeller(sellerId);
+                    if (Array.isArray(ordersData)) setRecentOrders(ordersData.slice(0, 5));
+                } catch (err) {
+                    console.warn('Không thể lấy đơn hàng gần đây:', err);
                 }
 
-                // 3. Lấy Sản phẩm sắp hết hàng (< 10 đơn vị)
-                const productsRes = await fetch(`http://localhost:3000/api/products?seller_id=${sellerId}`);
-                const productsData = await productsRes.json();
-                const activeProducts = productsData.filter((p: any) => p.status !== 'deleted');
-                setStats(prev => ({
-                    ...prev,
-                    total_products: activeProducts.length
-                }));
-                
-                if (Array.isArray(productsData)) {
-                    const lowStock = productsData.filter((p: any) => p.quantity <= 10 && p.status !== 'deleted');
-                    setLowStockProducts(lowStock.slice(0, 5)); // Lấy top 5 cảnh báo
+                // 3. Lấy Sản phẩm sắp hết hàng (< 10 đơn vị) via productService
+                try {
+                    const productsData = await productService.getAll({ seller_id: sellerId });
+                    if (Array.isArray(productsData)) {
+                        const activeProducts = productsData.filter((p: any) => p.status !== 'deleted');
+                        setStats(prev => ({ ...prev, total_products: activeProducts.length }));
+                        const lowStock = activeProducts.filter((p: any) => Number(p.quantity) <= 10);
+                        setLowStockProducts(lowStock.slice(0, 5));
+                    }
+                } catch (err) {
+                    console.warn('Không thể lấy sản phẩm:', err);
                 }
 
             } catch (error) {
@@ -179,7 +173,7 @@ const FarmerOverviewSection: React.FC<{ sellerId: number, onNavigate: (key: stri
             <div className="stats-grid">
                 <StatCard 
                     icon={DollarSign} 
-                    title="Tổng Doanh thu" 
+                    title="Tổng Doanh thu theo thời gian" 
                     value={formatCurrency(stats.revenue)} 
                     color="green" 
                     trend="Đã hoàn thành" 
@@ -275,14 +269,8 @@ const FarmerOverviewSection: React.FC<{ sellerId: number, onNavigate: (key: stri
 export default function FarmerDashboard() {
     const [activeMenu, setActiveMenu] = useState('dashboard');
     
-    // Helper lấy userId từ localStorage
-    const getUserId = () => {
-        try {
-            const userStr = localStorage.getItem('user');
-            return userStr ? Number(JSON.parse(userStr).id) : 0;
-        } catch { return 0; }
-    };
-    const userId = getUserId();
+    // Lấy userId an toàn từ storageUtils (nếu null -> 0)
+    const userId = getUserId() ?? 0;
 
     // --- ROUTER SWITCHER ---
     const renderMainContent = () => {
