@@ -37,7 +37,7 @@ export const API_CONFIG = {
  */
 export const SOCKET_IO_OPTIONS = {
     path: '/socket.io/',
-    transports: ['websocket', 'polling'] as const,
+    transports: ['websocket', 'polling'] as string[],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 10,
