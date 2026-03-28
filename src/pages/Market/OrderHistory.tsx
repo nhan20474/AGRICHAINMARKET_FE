@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ORDER_STATUS_LABELS, getOrderStatusColor } from '../../services/orderService'; // ✅ KIỂM TRA
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
-import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
+import { API_CONFIG, API_ORIGIN, SOCKET_IO_OPTIONS } from '../../config/apiConfig';
 
 // Định nghĩa kiểu dữ liệu đơn hàng và sản phẩm trong đơn
 interface OrderItem {
@@ -134,7 +134,7 @@ quantity: item.quantity,
         // ✅ SOCKET: Lắng nghe cập nhật trạng thái đơn hàng realtime
         let socket: any;
         if (userId) {
-            socket = io(API_CONFIG.SOCKET_URL);
+            socket = io(API_CONFIG.SOCKET_URL, { ...SOCKET_IO_OPTIONS });
             socket.emit('register', userId);
             
             // Khi nhận thông báo cập nhật đơn hàng

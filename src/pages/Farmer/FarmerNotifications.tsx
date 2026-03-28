@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { API_CONFIG } from '../../config/apiConfig';
+import { API_CONFIG, SOCKET_IO_OPTIONS } from '../../config/apiConfig';
 
 const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -26,7 +26,7 @@ const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
     useEffect(() => {
         let socket: any;
         if (sellerId && sellerId > 0) {
-            socket = io(API_CONFIG.SOCKET_URL);
+            socket = io(API_CONFIG.SOCKET_URL, { ...SOCKET_IO_OPTIONS });
             // Đăng ký lại mỗi lần reload/mount
             socket.emit('register', sellerId);
             socket.on('notification', (data: any) => {

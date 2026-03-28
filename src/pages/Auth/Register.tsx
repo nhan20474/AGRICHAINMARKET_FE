@@ -120,11 +120,7 @@ export default function Register() {
         registerData.farm_name = formData.farmName ? formData.farmName.trim() : '';
       }
 
-      console.log('📤 Sending register data:', registerData);
-
       const response = await authService.register(registerData);
-
-      console.log('📥 Register response:', response);
 
       // Xử lý thành công dựa trên status hoặc message
       const isSuccess =

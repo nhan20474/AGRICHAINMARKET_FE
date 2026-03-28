@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client'; // ✅ THÊM import
-import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
+import { API_CONFIG, API_ORIGIN, SOCKET_IO_OPTIONS } from '../../config/apiConfig';
 
 interface ShippingInfo {
     shipping_company?: string;
@@ -359,7 +359,7 @@ const FarmerOrderShippingDetail: React.FC<Props> = ({ sellerId }) => {
         // ✅ SOCKET: Lắng nghe cập nhật từ buyer realtime
         let socket: any;
         if (sellerId) {
-            socket = io(API_CONFIG.SOCKET_URL);
+            socket = io(API_CONFIG.SOCKET_URL, { ...SOCKET_IO_OPTIONS });
             socket.emit('register', sellerId);
             
             // Khi nhận thông báo cập nhật đơn hàng

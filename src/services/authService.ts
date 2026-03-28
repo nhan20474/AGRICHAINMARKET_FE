@@ -33,8 +33,6 @@ import { safeSetJSON, safeGetJSON, safeSetItem, safeGetItem, safeRemoveItem } fr
 export const authService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
     try {
-      console.log('Login request:', data);
-      
       const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/login`, {
         method: 'POST',
         headers: {
@@ -44,7 +42,6 @@ export const authService = {
       });
 
       const result = await response.json();
-      console.log('Login response:', result);
 
       if (!response.ok) {
         throw new Error(result.message || result.error || 'Đăng nhập thất bại');
@@ -52,7 +49,9 @@ export const authService = {
 
       return result;
     } catch (error) {
-      console.error('Login error:', error);
+      if (import.meta.env.DEV && error instanceof Error) {
+        console.error('Login error:', error.message);
+      }
       if (error instanceof Error) {
         throw error;
       }
@@ -62,9 +61,6 @@ export const authService = {
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
-      console.log('🚀 API Request URL:', `${API_CONFIG.AUTH}/register`);
-      console.log('📦 Request Data:', JSON.stringify(data, null, 2));
-      
       const response = await fetchWithTimeout(`${API_CONFIG.AUTH}/register`, {
         method: 'POST',
         headers: {
@@ -73,14 +69,13 @@ export const authService = {
         body: JSON.stringify(data),
       });
 
-      console.log('📊 Response Status:', response.status);
-      
       let result;
       try {
         result = await response.json();
-        console.log('📄 Response Data:', JSON.stringify(result, null, 2));
       } catch (parseError) {
-        console.error('❌ Failed to parse response:', parseError);
+        if (import.meta.env.DEV) {
+          console.error('Failed to parse register response');
+        }
         throw new Error('Server trả về dữ liệu không hợp lệ');
       }
 
@@ -99,7 +94,9 @@ export const authService = {
 
       return result;
     } catch (error) {
-      console.error('💥 Register error:', error);
+      if (import.meta.env.DEV && error instanceof Error) {
+        console.error('Register error:', error.message);
+      }
       if (error instanceof Error) {
         throw error;
       }

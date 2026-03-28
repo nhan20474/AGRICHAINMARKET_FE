@@ -40,10 +40,6 @@ const PaymentResult = () => {
         }
       }
 
-      console.log('🔍 Payment callback params:', {
-        vnpResponse, vnpTxnRef, vnpOrderInfo, momoOrderId, resultCode, orderInfo, realOrderId
-      });
-
       if (!realOrderId) {
         setStatus('failed');
         setMessage('Không tìm thấy mã đơn hàng. Vui lòng kiểm tra Lịch sử đơn hàng hoặc liên hệ hỗ trợ.');

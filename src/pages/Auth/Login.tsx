@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
@@ -24,20 +24,19 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
 
-  // Load saved credentials khi component mount
-  useState(() => {
+  // Chỉ ghi nhớ email — không lưu mật khẩu trong trình duyệt
+  useEffect(() => {
+    localStorage.removeItem('rememberedPassword');
     const savedEmail = localStorage.getItem('rememberedEmail');
-    const savedPassword = localStorage.getItem('rememberedPassword');
     const wasRemembered = localStorage.getItem('rememberMe') === 'true';
-
-    if (wasRemembered && savedEmail && savedPassword) {
-      setFormData({
+    if (wasRemembered && savedEmail) {
+      setFormData((prev) => ({
+        ...prev,
         email: savedEmail,
-        password: savedPassword,
         rememberMe: true,
-      });
+      }));
     }
-  });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,13 +74,12 @@ export default function Login() {
         // Xử lý ghi nhớ đăng nhập
         if (formData.rememberMe) {
           localStorage.setItem('rememberedEmail', formData.email);
-          localStorage.setItem('rememberedPassword', formData.password);
           localStorage.setItem('rememberMe', 'true');
         } else {
           localStorage.removeItem('rememberedEmail');
-          localStorage.removeItem('rememberedPassword');
           localStorage.removeItem('rememberMe');
         }
+        localStorage.removeItem('rememberedPassword');
         
         await login(
           response.user?.email || formData.email,
@@ -106,7 +104,9 @@ export default function Login() {
         setError(response.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
     } catch (err: any) {
-      console.error('Login error:', err);
+      if (import.meta.env.DEV) {
+        console.error('Login error:', err?.message || err);
+      }
       
       // --- [MỚI] BẮT LỖI KHÓA TỪ BACKEND (NẾU CÓ) ---
       const errorMsg = err.response?.data?.message || err.message || '';

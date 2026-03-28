@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { notificationService } from '../../services/notificationService';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { API_CONFIG } from '../../config/apiConfig';
+import { API_CONFIG, SOCKET_IO_OPTIONS } from '../../config/apiConfig';
 
 function getUserId() {
   try {
@@ -58,7 +58,7 @@ const Notifications: React.FC = () => {
     // Khi có thông báo mới qua socket, tăng số lượng chưa đọc ngay lập tức
     let socket: any;
     if (userId) {
-      socket = io(API_CONFIG.SOCKET_URL);
+      socket = io(API_CONFIG.SOCKET_URL, { ...SOCKET_IO_OPTIONS });
       socket.emit('register', userId);
       socket.on('notification', (data: any) => {
         setPopup('Bạn có thông báo mới');

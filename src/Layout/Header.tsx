@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Leaf, User, Search, Bell, ChevronDown, LogOut, Settings, Package } from 'lucide-react';
 import '../styles/Header.css';
 import { useAuth } from '../contexts/AuthContext';
-import { API_CONFIG } from '../config/apiConfig';
+import { API_CONFIG, SOCKET_IO_OPTIONS } from '../config/apiConfig';
 
 interface HeaderProps {
     searchTerm: string;
@@ -187,9 +187,8 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
             try {
                 import('socket.io-client').then(({ io }) => {
                     const socket = io(API_CONFIG.SOCKET_URL, {
-                        reconnection: true,
+                        ...SOCKET_IO_OPTIONS,
                         reconnectionAttempts: 5,
-                        reconnectionDelay: 1000
                     });
                     
                     socketRef.current = socket;

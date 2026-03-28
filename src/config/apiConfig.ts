@@ -32,6 +32,19 @@ export const API_CONFIG = {
 };
 
 /**
+ * Tùy chọn Socket.IO client — path mặc định /socket.io/ (khớp Nginx proxy),
+ * ưu tiên WebSocket rồi polling (ổn định sau reverse proxy).
+ */
+export const SOCKET_IO_OPTIONS = {
+    path: '/socket.io/',
+    transports: ['websocket', 'polling'] as const,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 10,
+    timeout: 20000,
+};
+
+/**
  * Fetch với timeout
  * @param url - URL để fetch
  * @param options - Fetch options
