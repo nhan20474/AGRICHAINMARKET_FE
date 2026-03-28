@@ -3,8 +3,17 @@
  * Quản lý tập trung tất cả API URLs
  */
 
+/** Socket.IO nhận origin dạng http(s):// — không dùng ws(s)://; thư viện tự chọn polling/WebSocket. */
+function normalizeSocketUrl(raw: string | undefined): string {
+    let u = (raw ?? '').trim();
+    if (!u) return 'http://localhost:3000';
+    if (u.startsWith('wss://')) u = `https://${u.slice(6)}`;
+    else if (u.startsWith('ws://')) u = `http://${u.slice(5)}`;
+    return u.replace(/\/+$/, '');
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = normalizeSocketUrl(import.meta.env.VITE_SOCKET_URL);
 const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3000/api/upload';
 
 /** Origin không có /api — dùng ghép URL ảnh /uploads */
