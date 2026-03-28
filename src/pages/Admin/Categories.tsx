@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_CONFIG } from '../../config/apiConfig';
 
 interface Category {
     id: number;
@@ -6,7 +7,7 @@ interface Category {
     description?: string;
 }
 
-const API_BASE = 'http://localhost:3000/api/categories';
+const API_BASE = API_CONFIG.CATEGORIES;
 
 const Categories: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);

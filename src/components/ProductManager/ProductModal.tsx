@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import "./ProductModal.css"; 
+import "./ProductModal.css";
+import { API_ORIGIN } from "../../config/apiConfig"; 
 
 interface Props {
     isEditing: boolean;
@@ -210,7 +211,7 @@ export default function ProductModal({
                         <input type="file" onChange={handleMainImage} accept="image/*" />
                         {(formData.image_url_preview || formData.image_url) && (
                             <img
-                                src={formData.image_url_preview || (formData.image_url?.startsWith('/uploads') ? `http://localhost:3000${formData.image_url}` : formData.image_url)}
+                                src={formData.image_url_preview || (formData.image_url?.startsWith('/uploads') ? `${API_ORIGIN}${formData.image_url}` : formData.image_url)}
                                 className="pm-main-image"
                                 alt="Preview"
                                 onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
@@ -225,7 +226,7 @@ export default function ProductModal({
                         <div className="pm-extra-grid">
                             {extraImagesPreview.map((img, idx) => (
                                 <div key={idx} className="pm-extra-item">
-                                    <img src={img.startsWith('blob:') ? img : (img.startsWith('/uploads') ? `http://localhost:3000${img}` : img)} className="pm-extra-img" alt="Extra" />
+                                    <img src={img.startsWith('blob:') ? img : (img.startsWith('/uploads') ? `${API_ORIGIN}${img}` : img)} className="pm-extra-img" alt="Extra" />
                                     <button type="button" className="pm-delete-extra" onClick={() => deleteExtraImage(idx)}>×</button>
                                 </div>
                             ))}

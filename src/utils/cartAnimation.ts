@@ -1,3 +1,5 @@
+import { API_ORIGIN } from '../config/apiConfig';
+
 /**
  * Hiệu ứng morph - Sản phẩm biến thành checkmark
  * @param sourceElement - Element nguồn (nút thêm vào giỏ hoặc ảnh sản phẩm)
@@ -33,7 +35,7 @@ export const flyToCart = (sourceElement: HTMLElement, imageUrl: string) => {
   // Backend ở port 3000, Vite dev ở 5173
   const fullImageUrl = imageUrl.startsWith('http') 
     ? imageUrl 
-    : `http://localhost:3000${imageUrl}`;
+    : `${API_ORIGIN}${imageUrl}`;
   productImg.src = fullImageUrl;
   
   Object.assign(productImg.style, {

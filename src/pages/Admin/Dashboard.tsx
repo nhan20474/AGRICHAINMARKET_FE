@@ -22,6 +22,7 @@ import DiscountManager from './DiscountManager';
 import AdminReports from './AdminReports';
 import AdminOrderManager from './OrderManager';
 import { orderService } from '../../services/orderService';
+import { API_CONFIG } from '../../config/apiConfig';
 const ORDER_COLORS = [
   '#10B981',
   '#F59E0B',
@@ -79,7 +80,7 @@ const menuItems = [
 ];
 
 const loadDashboard = async (setStats: React.Dispatch<React.SetStateAction<Stats>>) => {
-    const res = await fetch('http://localhost:3000/api/reports/admin/dashboard');
+    const res = await fetch(`${API_CONFIG.REPORTS}/admin/dashboard`);
     const data = await res.json();
 
     setStats({
@@ -102,7 +103,7 @@ const loadRevenueChart = async (
 ) => {
     try {
         // 1. SỬA URL: Thêm /admin vào giữa reports và trend
-        const res = await fetch('http://localhost:3000/api/reports/admin/trend?type=monthly');
+        const res = await fetch(`${API_CONFIG.REPORTS}/admin/trend?type=monthly`);
 
         // 2. Kiểm tra lỗi HTTP trước khi parse JSON (để tránh lỗi "<!DOCTYPE...")
         if (!res.ok) {

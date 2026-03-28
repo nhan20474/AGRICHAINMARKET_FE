@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import ProductModal from "../../components/ProductManager/ProductModal";
+import { API_CONFIG, API_ORIGIN } from "../../config/apiConfig";
 
-const API_PRODUCT = "http://localhost:3000/api/products";
-const API_ADMIN = "http://localhost:3000/api/admin";
-const API_NOTIFY = "http://localhost:3000/api/notifications";
-const API_FARMERS = "http://localhost:3000/api/admin/users/farmers";
-const API_CATEGORIES = "http://localhost:3000/api/categories";
-const API_UPLOAD = "http://localhost:3000/api/upload";
-const BASE_URL = "http://localhost:3000";
+const API_PRODUCT = API_CONFIG.PRODUCTS;
+const API_ADMIN = `${API_CONFIG.BASE_URL}/admin`;
+const API_NOTIFY = API_CONFIG.NOTIFICATIONS;
+const API_FARMERS = `${API_CONFIG.USERS}/farmers`;
+const API_CATEGORIES = API_CONFIG.CATEGORIES;
+const API_UPLOAD = API_CONFIG.UPLOAD_URL;
+const BASE_URL = API_ORIGIN;
 
 interface Product {
   id: number;

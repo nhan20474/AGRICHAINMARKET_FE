@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { authService } from '../../services/authService';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { API_CONFIG } from '../../config/apiConfig';
 
 const ProfilePage: React.FC = () => {
     const [profile, setProfile] = useState<any>(null);
@@ -90,7 +91,7 @@ const ProfilePage: React.FC = () => {
             formData.append('farm_address', applyForm.farm_address);
             formData.append('business_license', applyForm.business_license_file);
 
-            const res = await fetch(`http://localhost:3000/api/profile/${userId}/apply-farmer`, {
+            const res = await fetch(`${API_CONFIG.BASE_URL}/profile/${userId}/apply-farmer`, {
                 method: 'POST',
                 body: formData
             });

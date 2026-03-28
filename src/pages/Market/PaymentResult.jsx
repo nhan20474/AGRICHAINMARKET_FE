@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { API_CONFIG } from '../../config/apiConfig';
 
 const PaymentResult = () => {
   const navigate = useNavigate();
@@ -74,7 +75,7 @@ const PaymentResult = () => {
           const poll = async () => {
             attempts++;
             try {
-              const resp = await fetch(`http://localhost:3000/api/payments/status/${realOrderId}`);
+              const resp = await fetch(`${API_CONFIG.PAYMENTS}/status/${realOrderId}`);
               if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
               const j = await resp.json();
               if (j.payment_status === 'paid') {
@@ -112,7 +113,7 @@ const PaymentResult = () => {
           poll();
         } else {
           // MoMo verify
-          const response = await fetch('http://localhost:3000/api/payments/momo/verify', {
+          const response = await fetch(`${API_CONFIG.PAYMENTS}/momo/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: parseInt(realOrderId) })

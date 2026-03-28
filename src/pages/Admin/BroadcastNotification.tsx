@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../../config/apiConfig';
 
 // --- GIẢ LẬP QUYỀN HẠN ---
 // Hãy thử đổi thành 'staff' hoặc 'seller' để thấy nút Xóa và nút Cài đặt biến mất
@@ -18,7 +19,7 @@ interface NotificationItem {
 
 // --- API HELPER ---
 async function sendBroadcastNotification(data: any) {
-    const res = await fetch('http://localhost:3000/api/notifications/broadcast', {
+    const res = await fetch(`${API_CONFIG.NOTIFICATIONS}/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -54,7 +55,7 @@ const NotificationCenter: React.FC = () => {
         setLoading(true);
         try {
             // Logic filter API (giả lập filter client nếu backend chưa hỗ trợ full param)
-            let url = `http://localhost:3000/api/notifications/user/1?page=${page}&pageSize=${pageSize}`;
+            let url = `${API_CONFIG.NOTIFICATIONS}/user/1?page=${page}&pageSize=${pageSize}`;
             if (filterRead === 'read') url += '&is_read=true';
             if (filterRead === 'unread') url += '&is_read=false';
 
@@ -88,7 +89,7 @@ const NotificationCenter: React.FC = () => {
     // 2. Đánh dấu đã đọc
     const markAsRead = async (id: number) => {
         try {
-            await fetch(`http://localhost:3000/api/notifications/read/${id}`, { method: 'PATCH' });
+            await fetch(`${API_CONFIG.NOTIFICATIONS}/read/${id}`, { method: 'PATCH' });
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
         } catch (err) { console.error(err); }
     };
@@ -102,7 +103,7 @@ const NotificationCenter: React.FC = () => {
         if (!window.confirm("Bạn chắc chắn muốn xóa vĩnh viễn thông báo này?")) return;
 
         try {
-            const res = await fetch(`http://localhost:3000/api/notifications/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_CONFIG.NOTIFICATIONS}/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setNotifications(prev => prev.filter(n => n.id !== id));
                 setNotifyToast("🗑️ Đã xóa thành công");
@@ -117,7 +118,7 @@ const NotificationCenter: React.FC = () => {
         if (!window.confirm(`Hành động này sẽ xóa vĩnh viễn các thông báo cũ hơn ${autoDeleteDays} ngày. Tiếp tục?`)) return;
 
         try {
-            const res = await fetch(`http://localhost:3000/api/notifications/cleanup?days=${autoDeleteDays}`, { method: 'DELETE' });
+            const res = await fetch(`${API_CONFIG.NOTIFICATIONS}/cleanup?days=${autoDeleteDays}`, { method: 'DELETE' });
             const data = await res.json();
             if (res.ok) {
                 setNotifyToast(`🧹 ${data.message}. Đã xóa ${data.deleted_count} dòng.`);

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { API_CONFIG } from '../config/apiConfig';
 
 interface User {
   id: number;
@@ -60,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Gọi API lấy thông tin mới nhất của user (Dựa vào ID trong localStorage)
         // Lưu ý: Đảm bảo Backend có API này: /api/profile/:id hoặc /api/users/:id
-        const response = await fetch(`http://localhost:3000/api/profile/${currentUser.id}`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/profile/${currentUser.id}`, {
           headers: { 
             'Authorization': token, // Backend cần check token này
             'Content-Type': 'application/json' 

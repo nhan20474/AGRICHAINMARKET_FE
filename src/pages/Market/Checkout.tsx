@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cartService } from '../../services/cartService';
 import { discountService } from '../../services/discountService';
+import { API_CONFIG } from '../../config/apiConfig';
 
 function getUserId() {
     try {
@@ -56,7 +57,7 @@ const CheckoutPage: React.FC = () => {
     useEffect(() => {
         if (!userId) { setLoading(false); return; }
         
-        fetch(`http://localhost:3000/api/cart/${userId}`)
+        fetch(`${API_CONFIG.BASE_URL}/cart/${userId}`)
             .then(res => res.json())
             .then(data => {
                 // ✅ SỬA LỖI: Xử lý đúng cấu trúc { items: [], total: 0 }
@@ -121,7 +122,7 @@ const CheckoutPage: React.FC = () => {
     // ✅ HÀM: Tạo QR code demo
     const createDemoQR = async (orderId: number) => {
         try {
-            const res = await fetch('http://localhost:3000/api/payments/demo/create-qr', {
+            const res = await fetch(`${API_CONFIG.BASE_URL}/payments/demo/create-qr`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId })
@@ -170,7 +171,7 @@ const CheckoutPage: React.FC = () => {
         
         try {
             // TẠO ĐƠN HÀNG SAU KHI THANH TOÁN
-            const orderRes = await fetch(`http://localhost:3000/api/orders/${userId}`, {
+            const orderRes = await fetch(`${API_CONFIG.BASE_URL}/orders/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderPayload)
@@ -193,7 +194,7 @@ const CheckoutPage: React.FC = () => {
 
             if (orderRes.ok) {
                 // Gọi API xác nhận thanh toán
-                await fetch('http://localhost:3000/api/payments/demo/confirm-payment', {
+                await fetch(`${API_CONFIG.BASE_URL}/payments/demo/confirm-payment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId })
@@ -240,7 +241,7 @@ const CheckoutPage: React.FC = () => {
         // Log giá trị truyền đi để debug
         console.log('Gửi MoMo:', { orderId, totalAmount, type_orderId: typeof orderId, type_totalAmount: typeof totalAmount });
         try {
-            const res = await fetch('http://localhost:3000/api/payments/momo/create-payment', {
+            const res = await fetch(`${API_CONFIG.BASE_URL}/payments/momo/create-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -301,7 +302,7 @@ const CheckoutPage: React.FC = () => {
         console.log('Gửi VNPay:', { orderId, totalAmount });
 
         try {
-            const res = await fetch('http://localhost:3000/api/payments/vnpay/create-payment', {
+            const res = await fetch(`${API_CONFIG.BASE_URL}/payments/vnpay/create-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: Number(orderId), total_amount: Math.round(Number(totalAmount)) })
@@ -337,7 +338,7 @@ const CheckoutPage: React.FC = () => {
                             try {
                                 while (Date.now() - start < timeoutMs) {
                                     try {
-                                        const r = await fetch(`http://localhost:3000/api/payments/status/${orderId}`);
+                                        const r = await fetch(`${API_CONFIG.BASE_URL}/payments/status/${orderId}`);
                                         if (r.ok) {
                                             const jr = await r.json().catch(() => null);
                                             if (jr) {
@@ -437,7 +438,7 @@ const CheckoutPage: React.FC = () => {
                 discount_code: appliedDiscount ? appliedDiscount.code : null
             };
 
-            const orderRes = await fetch(`http://localhost:3000/api/orders/${userId}`, {
+            const orderRes = await fetch(`${API_CONFIG.BASE_URL}/orders/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderPayload)

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ORDER_STATUS_LABELS, getOrderStatusColor } from '../../services/orderService'; // ✅ Đổi import
+import { API_CONFIG } from '../../config/apiConfig';
 
 interface Props {
   sellerId: number;
@@ -28,7 +29,7 @@ const FarmerOrdersSection: React.FC<Props> = ({ sellerId, onNavigateToShipping }
   async function fetchOrders() {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/api/orders/by-seller/${sellerId}`);
+      const res = await fetch(`${API_CONFIG.ORDERS}/by-seller/${sellerId}`);
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {

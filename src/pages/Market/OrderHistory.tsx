@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ORDER_STATUS_LABELS, getOrderStatusColor } from '../../services/orderService'; // ✅ KIỂM TRA
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
 
 // Định nghĩa kiểu dữ liệu đơn hàng và sản phẩm trong đơn
 interface OrderItem {
@@ -50,7 +51,7 @@ const OrderHistory: React.FC = () => {
         }
         
         try {
-            const res = await fetch(`http://localhost:3000/api/orders/history/${userId}`);
+            const res = await fetch(`${API_CONFIG.ORDERS}/history/${userId}`);
             const data = await res.json();
             
             const ordersMap = new Map<number, Order>();
@@ -108,7 +109,7 @@ quantity: item.quantity,
 
         try {
             // ✅ ĐÚNG: Gọi API shipping route
-            const res = await fetch(`http://localhost:3000/api/shipping/${orderId}/status`, {
+            const res = await fetch(`${API_CONFIG.SHIPPING}/${orderId}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'received' })
@@ -133,7 +134,7 @@ quantity: item.quantity,
         // ✅ SOCKET: Lắng nghe cập nhật trạng thái đơn hàng realtime
         let socket: any;
         if (userId) {
-            socket = io('http://localhost:3000');
+            socket = io(API_CONFIG.SOCKET_URL);
             socket.emit('register', userId);
             
             // Khi nhận thông báo cập nhật đơn hàng
@@ -162,7 +163,7 @@ quantity: item.quantity,
     const handleReviewProduct = async (productId: number, productName: string) => {
         try {
 // Kiểm tra sản phẩm có còn tồn tại không
-            const res = await fetch(`http://localhost:3000/api/products/${productId}`);
+            const res = await fetch(`${API_CONFIG.PRODUCTS}/${productId}`);
             
             if (!res.ok) {
                 if (res.status === 404) {
@@ -292,7 +293,7 @@ display: 'flex',
                                         alignItems: 'center'
                                     }}>
                                         <img 
-                                            src={item.image_url ? `http://localhost:3000${item.image_url}` : '/img/default.jpg'} 
+                                            src={item.image_url ? `${API_ORIGIN}${item.image_url}` : '/img/default.jpg'} 
                                             alt={item.name} 
                                             style={{ 
                                                 width: 60, 

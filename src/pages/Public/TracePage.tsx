@@ -4,6 +4,7 @@ import { Leaf, MapPin, Calendar, CheckCircle, ExternalLink, Package, Truck, Arro
 import { productService } from '../../services/productService';
 import { blockchainService } from '../../services/blockchainService';
 import '../../styles/TracePage.css';
+import { API_ORIGIN } from '../../config/apiConfig';
 
 const TracePage: React.FC = () => {
     const { id } = useParams();
@@ -117,7 +118,7 @@ const TracePage: React.FC = () => {
                                         {log.image_url && (
                                             <div className="step-evidence-img">
                                                 <img 
-                                                    src={log.image_url.startsWith('http') ? log.image_url : `http://localhost:3000${log.image_url}`} 
+                                                    src={log.image_url.startsWith('http') ? log.image_url : `${API_ORIGIN}${log.image_url}`} 
                                                     alt="Bằng chứng" 
                                                     onError={(e) => e.currentTarget.style.display = 'none'}
                                                 />

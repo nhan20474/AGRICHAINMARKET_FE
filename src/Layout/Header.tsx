@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Leaf, User, Search, Bell, ChevronDown, LogOut, Settings, Package } from 'lucide-react';
 import '../styles/Header.css';
 import { useAuth } from '../contexts/AuthContext';
+import { API_CONFIG } from '../config/apiConfig';
 
 interface HeaderProps {
     searchTerm: string;
@@ -75,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
             // Đồng bộ từ API nếu user đã đăng nhập (đảm bảo chính xác)
             if (user?.id) {
                 try {
-                    const res = await fetch(`http://localhost:3000/api/cart/${user.id}`);
+                    const res = await fetch(`${API_CONFIG.CART}/${user.id}`);
                     const data = await res.json();
                     if (data.items && Array.isArray(data.items)) {
                         const totalQty = data.items.reduce((sum: number, item: any) => 
@@ -156,7 +157,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
             
             // Fetch từ API
             try {
-                const res = await fetch(`http://localhost:3000/api/notifications/user/${userId}/unread-count`, {
+                const res = await fetch(`${API_CONFIG.NOTIFICATIONS}/user/${userId}/unread-count`, {
                     headers: { 'Cache-Control': 'no-cache' }
                 });
                 const data = await res.json();
@@ -185,7 +186,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearchChange }) => {
         if (!socketRef.current) {
             try {
                 import('socket.io-client').then(({ io }) => {
-                    const socket = io('http://localhost:3000', {
+                    const socket = io(API_CONFIG.SOCKET_URL, {
                         reconnection: true,
                         reconnectionAttempts: 5,
                         reconnectionDelay: 1000

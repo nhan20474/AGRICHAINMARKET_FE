@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Leaf, Image as ImageIcon, Loader, X } from 'lucide-react';
 import "../styles/AddLogModal.css";
+import { API_CONFIG, API_ORIGIN } from "../config/apiConfig";
 
 interface AddLogModalProps {
     isOpen: boolean;
@@ -26,7 +27,7 @@ const AddLogModal: React.FC<AddLogModalProps> = ({ isOpen, onClose, onSubmit, is
             const fd = new FormData();
             fd.append('file', file);
 
-            const res = await fetch('http://localhost:3000/api/upload', { method: 'POST', body: fd });
+            const res = await fetch(API_CONFIG.UPLOAD_URL, { method: 'POST', body: fd });
             const data = await res.json();
 
             const url = data.fileUrl || data.url;
@@ -90,7 +91,7 @@ const AddLogModal: React.FC<AddLogModalProps> = ({ isOpen, onClose, onSubmit, is
                             {formData.image_url ? (
                                 <div className="img-preview-wrapper">
                                     <img
-                                        src={formData.image_url.startsWith('http') ? formData.image_url : `http://localhost:3000${formData.image_url}`}
+                                        src={formData.image_url.startsWith('http') ? formData.image_url : `${API_ORIGIN}${formData.image_url}`}
                                         alt="Preview"
                                         className="img-preview"
                                     />

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { notificationService } from '../../services/notificationService';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { API_CONFIG } from '../../config/apiConfig';
 
 function getUserId() {
   try {
@@ -37,7 +38,7 @@ const Notifications: React.FC = () => {
     setLoading(true);
     try {
       // Gọi trực tiếp API lấy thông báo cho user
-      const res = await fetch(`http://localhost:3000/api/notifications/user/${userId}?page=1&pageSize=50`);
+      const res = await fetch(`${API_CONFIG.NOTIFICATIONS}/user/${userId}?page=1&pageSize=50`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : (data.notifications || data.items || []);
       setItems(list);
@@ -57,7 +58,7 @@ const Notifications: React.FC = () => {
     // Khi có thông báo mới qua socket, tăng số lượng chưa đọc ngay lập tức
     let socket: any;
     if (userId) {
-      socket = io('http://localhost:3000');
+      socket = io(API_CONFIG.SOCKET_URL);
       socket.emit('register', userId);
       socket.on('notification', (data: any) => {
         setPopup('Bạn có thông báo mới');

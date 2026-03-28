@@ -9,6 +9,7 @@ import AddLogModal from '../../components/AddLogModal';
 import QRCodeModal from '../../components/QRCodeModal';
 
 import '../../styles/TraceabilityManager.css';
+import { API_ORIGIN } from '../../config/apiConfig';
 
 const TraceabilityManager: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -203,7 +204,7 @@ const TraceabilityManager: React.FC = () => {
                                                         src={
                                                             log.image_url.startsWith('http')
                                                                 ? log.image_url
-                                                                : `http://localhost:3000${log.image_url}`
+                                                                : `${API_ORIGIN}${log.image_url}`
                                                         }
                                                         alt="Proof"
                                                         className="timeline-img"

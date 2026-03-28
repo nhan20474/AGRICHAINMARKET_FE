@@ -3,6 +3,7 @@ import { Trash2, Plus, Minus, ArrowLeft, AlertTriangle, ShoppingBag } from 'luci
 import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/Cart.css';
 import { cartService } from '../../services/cartService';
+import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
 
 // Interface khớp với dữ liệu Backend trả về
 interface CartItem {
@@ -51,7 +52,7 @@ const CartPage: React.FC = () => {
     const fetchCart = async () => {
         try {
             // Gọi API lấy giỏ hàng (đã có logic giá sale từ backend)
-            const res = await fetch(`http://localhost:3000/api/cart/${userId}`);
+            const res = await fetch(`${API_CONFIG.CART}/${userId}`);
             const data = await res.json();
             
             const items = Array.isArray(data.items) ? data.items.map((item: any) => ({
@@ -98,7 +99,7 @@ const CartPage: React.FC = () => {
 
         try {
             // Gọi API PUT update số lượng trực tiếp (Gọn hơn cách cộng dồn cũ)
-            await fetch('http://localhost:3000/api/cart/update', { 
+            await fetch(`${API_CONFIG.CART}/update`, { 
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ user_id: userId, product_id: productId, quantity: newQty })
@@ -120,7 +121,7 @@ const CartPage: React.FC = () => {
         if (!window.confirm("Bạn chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) return;
         
         try {
-            await fetch(`http://localhost:3000/api/cart/${userId}/${productId}`, { method: 'DELETE' });
+            await fetch(`${API_CONFIG.CART}/${userId}/${productId}`, { method: 'DELETE' });
             fetchCart();
             
             // ✅ Dispatch event để Header cập nhật ngay
@@ -303,7 +304,7 @@ const CartPage: React.FC = () => {
                                                 <td className="product-col">
                                                     <div className="cart-product-info">
                                                         <img 
-                                                            src={item.image_url && item.image_url.startsWith('/uploads') ? `http://localhost:3000${item.image_url}` : (item.image_url || '/img/default.jpg')} 
+                                                            src={item.image_url && item.image_url.startsWith('/uploads') ? `${API_ORIGIN}${item.image_url}` : (item.image_url || '/img/default.jpg')} 
                                                             alt={item.name} 
                                                             className="cart-img" 
                                                             onError={e => { (e.target as HTMLImageElement).src = '/img/default.jpg'; }} 

@@ -12,10 +12,7 @@ import { orderService } from '../../services/orderService';
 import { blockchainService } from '../../services/blockchainService';
 import '../../styles/ProductDetail.css';
 import { flyToCart } from '../../utils/cartAnimation';
-
-
-// --- CẤU HÌNH URL SERVER ĐỂ LẤY ẢNH ---
-const API_BASE_URL = 'http://localhost:3000'; 
+import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
 
 const ProductDetail: React.FC = () => {
     const { id } = useParams();
@@ -59,7 +56,7 @@ const ProductDetail: React.FC = () => {
     const getImageUrl = (url?: string) => {
         if (!url) return '/img/default.jpg'; // Ảnh mặc định nếu null
         if (url.startsWith('http')) return url; // Ảnh online
-        if (url.startsWith('/uploads')) return `${API_BASE_URL}${url}`; // Ảnh từ server nodejs
+        if (url.startsWith('/uploads')) return `${API_ORIGIN}${url}`; // Ảnh từ server nodejs
         return url;
     };
     
@@ -124,7 +121,7 @@ const ProductDetail: React.FC = () => {
             if (found && found.id) {
                 try {
                     // ✅ CÁCH 1: Thử lấy từ API product_images endpoint
-                    const imagesRes = await fetch(`http://localhost:3000/api/product-images/${found.id}`);
+                    const imagesRes = await fetch(`${API_CONFIG.BASE_URL}/product-images/${found.id}`);
                     const imagesData = await imagesRes.json();
                     const images = imagesData.data || [];
                     

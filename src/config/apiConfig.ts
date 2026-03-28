@@ -7,6 +7,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3000/api/upload';
 
+/** Origin không có /api — dùng ghép URL ảnh /uploads */
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '') || 'http://localhost:3000';
+
 export const API_CONFIG = {
     BASE_URL: API_BASE_URL,
     SOCKET_URL: SOCKET_URL,
@@ -24,6 +27,8 @@ export const API_CONFIG = {
     USERS: `${API_BASE_URL}/admin/users`,
     SEARCH: `${API_BASE_URL}/search`,
     NOTIFICATIONS: `${API_BASE_URL}/notifications`,
+    CART: `${API_BASE_URL}/cart`,
+    PAYMENTS: `${API_BASE_URL}/payments`,
 };
 
 /**

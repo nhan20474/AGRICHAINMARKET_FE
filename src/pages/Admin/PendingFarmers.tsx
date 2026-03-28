@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
 
 interface FarmerApplication {
     application_id: number;
@@ -10,7 +11,7 @@ interface FarmerApplication {
     application_date?: string;
 }
 
-const API_BASE = 'http://localhost:3000/api/admin/users';
+const API_BASE = API_CONFIG.USERS;
 
 const PendingFarmers: React.FC = () => {
     const [pendingFarmers, setPendingFarmers] = useState<FarmerApplication[]>([]);
@@ -115,7 +116,7 @@ const PendingFarmers: React.FC = () => {
                                         <a
                                             href={
                                                 farmer.business_license_url.startsWith('/uploads/')
-                                                    ? `http://localhost:3000${farmer.business_license_url}`
+                                                    ? `${API_ORIGIN}${farmer.business_license_url}`
                                                     : farmer.business_license_url
                                             }
                                             target="_blank"
@@ -124,7 +125,7 @@ const PendingFarmers: React.FC = () => {
                                             <img
                                                 src={
                                                     farmer.business_license_url.startsWith('/uploads/')
-                                                        ? `http://localhost:3000${farmer.business_license_url}`
+                                                        ? `${API_ORIGIN}${farmer.business_license_url}`
                                                         : farmer.business_license_url
                                                 }
                                                 alt="Giấy phép"

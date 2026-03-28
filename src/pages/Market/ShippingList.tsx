@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { API_CONFIG } from '../../config/apiConfig';
 
 // Khai báo ShippingInfo (nếu chưa import từ service)
 interface ShippingInfo {
@@ -21,7 +22,7 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Đã hủy'
 };
 
-const API_BASE = 'http://localhost:3000/api'; // bổ sung nếu chưa có
+const API_BASE = API_CONFIG.BASE_URL;
 
 const ShippingList: React.FC = () => {
   const [searchParams] = useSearchParams();

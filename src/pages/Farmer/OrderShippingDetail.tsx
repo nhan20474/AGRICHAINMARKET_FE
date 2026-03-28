@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client'; // ✅ THÊM import
+import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
 
 interface ShippingInfo {
     shipping_company?: string;
@@ -67,7 +68,7 @@ const shippingStatusOptions = [
     { value: 'cancelled', label: 'Đã hủy' }
 ];
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = API_CONFIG.BASE_URL;
 
 const shippingCompanies = [
     'Viettel Post',
@@ -358,7 +359,7 @@ const FarmerOrderShippingDetail: React.FC<Props> = ({ sellerId }) => {
         // ✅ SOCKET: Lắng nghe cập nhật từ buyer realtime
         let socket: any;
         if (sellerId) {
-            socket = io('http://localhost:3000');
+            socket = io(API_CONFIG.SOCKET_URL);
             socket.emit('register', sellerId);
             
             // Khi nhận thông báo cập nhật đơn hàng
@@ -1061,7 +1062,7 @@ const FarmerOrderShippingDetail: React.FC<Props> = ({ sellerId }) => {
                                     <tr key={item.id ?? `${item.product_id}-${oid}`}>
                                         <td style={{ padding: 8 }}>
                                             <img
-                                                src={item.image_url ? `http://localhost:3000${item.image_url}` : '/img/default.jpg'}
+                                                src={item.image_url ? `${API_ORIGIN}${item.image_url}` : '/img/default.jpg'}
                                                 alt={item.name}
                                                 style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }}
                                             />

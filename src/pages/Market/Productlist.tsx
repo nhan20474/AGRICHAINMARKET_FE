@@ -5,6 +5,7 @@ import { searchService } from '../../services/searchService';
 import { categoryService, Category } from '../../services/categoryService';
 import { cartService } from '../../services/cartService';
 import { flyToCart } from '../../utils/cartAnimation';
+import { API_ORIGIN } from '../../config/apiConfig';
 import '../../styles/ProductList.css';
 
 
@@ -247,7 +248,7 @@ const ProductList: React.FC = () => {
                                                 </div>
                                             )}
                                             <img
-                                                src={p.image_url ? (p.image_url.startsWith('/uploads/') ? `http://localhost:3000${p.image_url}` : p.image_url.startsWith('http') ? p.image_url : '/img/default.jpg') : '/img/default.jpg'}
+                                                src={p.image_url ? (p.image_url.startsWith('/uploads/') ? `${API_ORIGIN}${p.image_url}` : p.image_url.startsWith('http') ? p.image_url : '/img/default.jpg') : '/img/default.jpg'}
                                                 alt={p.name}
                                                 className="product-image"
                                                 onError={e => { (e.target as HTMLImageElement).src = '/img/default.jpg'; }}

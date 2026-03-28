@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import { API_CONFIG } from '../../config/apiConfig';
 
 const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -9,7 +10,7 @@ const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`http://localhost:3000/api/notifications/user/${sellerId}`)
+        fetch(`${API_CONFIG.NOTIFICATIONS}/user/${sellerId}`)
             .then(async res => {
                 const data = await res.json();
                 let list = Array.isArray(data) ? data : (data.notifications || []);
@@ -25,12 +26,12 @@ const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
     useEffect(() => {
         let socket: any;
         if (sellerId && sellerId > 0) {
-            socket = io('http://localhost:3000');
+            socket = io(API_CONFIG.SOCKET_URL);
             // Đăng ký lại mỗi lần reload/mount
             socket.emit('register', sellerId);
             socket.on('notification', (data: any) => {
                 console.log('Nhận event notification:', data); // Thêm log kiểm tra
-                fetch(`http://localhost:3000/api/notifications/user/${sellerId}`)
+                fetch(`${API_CONFIG.NOTIFICATIONS}/user/${sellerId}`)
                     .then(async res => {
                         const data = await res.json();
                         let list = Array.isArray(data) ? data : (data.notifications || []);
@@ -50,7 +51,7 @@ const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
     // Đánh dấu đã đọc
     const markRead = async (id: number) => {
         try {
-            await fetch(`http://localhost:3000/api/notifications/read/${id}`, { method: 'PATCH' });
+            await fetch(`${API_CONFIG.NOTIFICATIONS}/read/${id}`, { method: 'PATCH' });
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
             setUnreadCount(notifications.filter(n => n.id !== id && !n.is_read).length);
         } catch {}
@@ -59,7 +60,7 @@ const FarmerNotifications: React.FC<{ sellerId: number }> = ({ sellerId }) => {
     // Xóa thông báo (chỉ xóa của user đang đăng nhập)
     const remove = async (id: number) => {
         try {
-            await fetch(`http://localhost:3000/api/notifications/${id}`, { method: 'DELETE' });
+            await fetch(`${API_CONFIG.NOTIFICATIONS}/${id}`, { method: 'DELETE' });
             setNotifications(prev => prev.filter(n => n.id !== id));
             setUnreadCount(notifications.filter(n => n.id !== id && !n.is_read).length);
         } catch {}

@@ -3,6 +3,7 @@ import { Edit, Trash2, Plus, Layers, X, Save, Upload, Image as ImageIcon, AlertC
 import { panelService, Panel } from '../../services/panelService';
 import { categoryService, Category } from '../../services/categoryService'; // 1. Import Category Service
 import '../../styles/PanelManager.css';
+import { API_ORIGIN } from '../../config/apiConfig';
 
 const defaultForm = {
     name: '',
@@ -207,7 +208,7 @@ const PanelManager: React.FC = () => {
                                     <td>
                                         <div style={{display:'flex', gap:5}}>
                                             {p.images && p.images.slice(0, 3).map((img, i) => (
-                                                <img key={i} src={img.startsWith('http') ? img : `http://localhost:3000${img}`} alt="" style={{width:40, height:40, objectFit:'cover', borderRadius:4, border:'1px solid #eee'}} />
+                                                <img key={i} src={img.startsWith('http') ? img : `${API_ORIGIN}${img}`} alt="" style={{width:40, height:40, objectFit:'cover', borderRadius:4, border:'1px solid #eee'}} />
                                             ))}
                                             {p.images && p.images.length > 3 && <span style={{fontSize:12, alignSelf:'center', color:'#666'}}>+{p.images.length - 3}</span>}
                                         </div>
@@ -336,7 +337,7 @@ const PanelManager: React.FC = () => {
                             <div className="img-grid">
                                 {existingImages.map((img, idx) => (
                                     <div key={`old-${idx}`} className="img-preview-wrapper">
-                                        <img src={img.startsWith('http') ? img : `http://localhost:3000${img}`} className="img-preview" alt="old" />
+                                        <img src={img.startsWith('http') ? img : `${API_ORIGIN}${img}`} className="img-preview" alt="old" />
                                         <button className="remove-img-btn" onClick={() => handleRemoveExistingImage(img)}><X size={14}/></button>
                                         <div className="img-tag">Đã lưu</div>
                                     </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, PlusCircle, Edit, Trash2, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
 import { productService, Product } from '../../services/productService';
 import { categoryService, Category } from '../../services/categoryService';
+import { API_CONFIG, API_ORIGIN } from '../../config/apiConfig';
 
 // Form mặc định (Tất cả đều là string để dễ bind vào input)
 const extendedDefaultForm = {
@@ -112,7 +113,7 @@ const ProductManagementSection: React.FC = () => {
         try {
             const fd = new FormData();
             fd.append('file', file);
-            const res = await fetch('http://localhost:3000/api/upload', { method: 'POST', body: fd });
+            const res = await fetch(API_CONFIG.UPLOAD_URL, { method: 'POST', body: fd });
             const data = await res.json();
             const url = data.fileUrl || data.url;
             if (url) setForm(prev => ({ ...prev, image_url: url }));
@@ -244,7 +245,7 @@ const ProductManagementSection: React.FC = () => {
                             <tr key={p.id} style={{borderBottom:'1px solid #eee'}}>
                                 <td style={{padding:15}}>
                                     <div style={{display:'flex', alignItems:'center', gap:12}}>
-                                        <img src={p.image_url && p.image_url.startsWith('/uploads') ? `http://localhost:3000${p.image_url}` : (p.image_url || '/img/default.jpg')} alt="" style={{width:48, height:48, borderRadius:6, objectFit:'cover', border:'1px solid #eee'}} onError={e => (e.target as HTMLImageElement).src='/img/default.jpg'}/>
+                                        <img src={p.image_url && p.image_url.startsWith('/uploads') ? `${API_ORIGIN}${p.image_url}` : (p.image_url || '/img/default.jpg')} alt="" style={{width:48, height:48, borderRadius:6, objectFit:'cover', border:'1px solid #eee'}} onError={e => (e.target as HTMLImageElement).src='/img/default.jpg'}/>
                                         <div>
                                             <div style={{fontWeight:600}}>{p.name}</div>
                                             <div style={{fontSize:12, color:'#888'}}>Mã SP: #{p.id}</div>
@@ -343,7 +344,7 @@ const ProductManagementSection: React.FC = () => {
                                         <div style={{border: '1px dashed #ccc', padding: 20, borderRadius: 8, textAlign:'center', background:'#fafafa'}}>
                                             {form.image_url ? (
                                                 <div style={{position:'relative', display:'inline-block'}}>
-                                                    <img src={form.image_url.startsWith('/uploads') ? `http://localhost:3000${form.image_url}` : form.image_url} alt="Preview" style={{maxHeight: 180, maxWidth: '100%', borderRadius: 4, border:'1px solid #ddd'}} onError={(e) => e.currentTarget.style.display = 'none'} />
+                                                    <img src={form.image_url.startsWith('/uploads') ? `${API_ORIGIN}${form.image_url}` : form.image_url} alt="Preview" style={{maxHeight: 180, maxWidth: '100%', borderRadius: 4, border:'1px solid #ddd'}} onError={(e) => e.currentTarget.style.display = 'none'} />
                                                     <button type="button" onClick={() => setForm({...form, image_url: ''})} style={{position:'absolute', top:-10, right:-10, background:'red', color:'white', border:'none', borderRadius:'50%', width:24, height:24, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><X size={14}/></button>
                                                 </div>
                                             ) : (

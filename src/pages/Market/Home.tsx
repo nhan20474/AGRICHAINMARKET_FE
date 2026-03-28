@@ -7,6 +7,7 @@ import "../../styles/Home.css";
 import { cartService } from "../../services/cartService";
 import { productService, Product } from "../../services/productService";
 import { panelService, Panel } from "../../services/panelService";
+import { API_ORIGIN } from "../../config/apiConfig";
 
 /* ------------------------------- HELPERS ------------------------------- */
 function getUserId() {
@@ -19,7 +20,7 @@ function getUserId() {
 const getImageUrl = (url?: string) => {
   if (!url) return "/img/default-product.jpg";
   if (url.startsWith("http")) return url;
-  return `http://localhost:3000${url}`;
+  return `${API_ORIGIN}${url}`;
 };
 
 const normalizeProductToProduct = (p: any): Product => {

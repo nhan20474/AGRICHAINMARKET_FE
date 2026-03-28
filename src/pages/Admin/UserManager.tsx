@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_CONFIG } from '../../config/apiConfig';
 
 // --- TYPE DEFINITIONS ---
 interface User {
@@ -15,7 +16,7 @@ interface User {
 }
 
 // Cấu hình API
-const API_BASE = 'http://localhost:3000/api/admin/users';
+const API_BASE = API_CONFIG.USERS;
 
 const UserManager: React.FC = () => {
     // State quản lý Tab: chỉ có 'consumers' hoặc 'farmers'
